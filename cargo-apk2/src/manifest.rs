@@ -1,7 +1,5 @@
 use crate::error::Error;
-use ndk_build::apk::StripConfig;
-use ndk_build::manifest::AndroidManifest;
-use ndk_build::target::Target;
+use ndk_build2::{apk::StripConfig, manifest::AndroidManifest, target::Target};
 use serde::Deserialize;
 use std::{
     collections::HashMap,

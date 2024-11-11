@@ -30,7 +30,7 @@ pub fn get_libs_search_paths(
                         _ => unreachable!(),
                     };
                     match kind {
-                        // FIXME: which kinds of search path we interested in
+                        // FIXME: 我们感兴趣的搜索路径类型
                         "dependency" | "native" | "all" => paths.push(path.into()),
                         _ => (),
                     };

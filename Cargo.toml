@@ -1,6 +1,12 @@
+[workspace.dependencies]
+dunce = "1.0.5"
+serde = "1.0.214"
+thiserror = "2.0.3"
+
 [workspace]
 members = [
-    "ndk-build",
+    "ndk-build2",
     "ndk-examples",
-    "cargo-apk",
+    "cargo-apk2",
 ]
+resolver = "2"

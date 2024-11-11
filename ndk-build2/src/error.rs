@@ -47,7 +47,7 @@ pub enum NdkError {
     #[error("Command `{}` had a non-zero exit code.", format!("{:?}", .0).replace('"', ""))]
     CmdFailed(Command),
     #[error(transparent)]
-    Serialize(#[from] quick_xml::de::DeError),
+    Serialize(#[from] quick_xml::SeError),
     #[error("String `{1}` is not a UID")]
     NotAUid(#[source] ParseIntError, String),
     #[error("Could not find `package:{package}` in output `{output}`")]

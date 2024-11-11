@@ -1,22 +1,14 @@
 use std::collections::HashMap;
 
-use cargo_apk::{ApkBuilder, Error};
+use cargo_apk2::{ApkBuilder, Error};
 use cargo_subcommand::Subcommand;
 use clap::{CommandFactory, FromArgMatches, Parser};
 
 #[derive(Parser)]
-struct Cmd {
+#[command(bin_name = "cargo")]
+enum Cmd {
     #[clap(subcommand)]
-    apk: ApkCmd,
-}
-
-#[derive(clap::Subcommand)]
-enum ApkCmd {
-    /// Helps cargo build apks for Android
-    Apk {
-        #[clap(subcommand)]
-        cmd: ApkSubCmd,
-    },
+    Apk2(ApkSubCmd),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Parser)]
@@ -30,6 +22,7 @@ struct Args {
 }
 
 #[derive(clap::Subcommand)]
+#[command(about = "Building Android Applications (APK) with Rust", version)]
 enum ApkSubCmd {
     /// Analyze the current package and report errors, but don't build object files nor an apk
     #[clap(visible_alias = "c")]
@@ -51,8 +44,7 @@ enum ApkSubCmd {
 
         /// Arguments passed to cargo. Some arguments will be used to configure
         /// the environment similar to other `cargo apk` commands
-        // TODO: This enum variant should parse into `Args` as soon as `clap` supports
-        // parsing only unrecognized args into a side-buffer.
+        // TODO: 一旦“clap”支持将无法识别的参数解析到侧缓冲区中，这个枚举变量就应该解析为“Args”。
         #[clap(trailing_var_arg = true, allow_hyphen_values = true)]
         cargo_args: Vec<String>,
     },
@@ -70,17 +62,13 @@ enum ApkSubCmd {
         #[clap(flatten)]
         args: Args,
     },
-    /// Print the version of cargo-apk
-    Version,
 }
 
 fn split_apk_and_cargo_args(input: Vec<String>) -> (Args, Vec<String>) {
-    // Clap doesn't support parsing unknown args properly:
+    // Clap 不支持正确解析未知参数：
     // https://github.com/clap-rs/clap/issues/1404
     // https://github.com/clap-rs/clap/issues/4498
-    // Introspect the `Args` struct and extract every known arg, and whether it takes a value. Use
-    // this information to separate out known args from unknown args, and re-parse all the known
-    // args into an `Args` struct.
+    // 检查 `Args` 结构并提取每个已知参数，以及它是否接受值。使用此信息将已知参数与未知参数分开，并将所有已知参数重新解析为 `Args` 结构。
 
     let known_args_taking_value = Args::command()
         .get_arguments()
@@ -140,9 +128,7 @@ fn iterator_single_item<T>(mut iter: impl Iterator<Item = T>) -> Option<T> {
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();
-    let Cmd {
-        apk: ApkCmd::Apk { cmd },
-    } = Cmd::parse();
+    let Cmd::Apk2(cmd) = Parser::parse();
     match cmd {
         ApkSubCmd::Check { args } => {
             let cmd = Subcommand::new(args.subcommand_args)?;
@@ -177,9 +163,6 @@ fn main() -> anyhow::Result<()> {
             let builder = ApkBuilder::from_subcommand(&cmd, args.device)?;
             let artifact = iterator_single_item(cmd.artifacts()).ok_or(Error::invalid_args())?;
             builder.gdb(artifact)?;
-        }
-        ApkSubCmd::Version => {
-            println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
         }
     }
     Ok(())

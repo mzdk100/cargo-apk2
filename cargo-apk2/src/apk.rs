@@ -1,13 +1,17 @@
-use crate::error::Error;
-use crate::manifest::{Inheritable, Manifest, Root};
+use crate::{
+    error::Error,
+    manifest::{Inheritable, Manifest, Root},
+};
 use cargo_subcommand::{Artifact, ArtifactType, CrateType, Profile, Subcommand};
-use ndk_build::apk::{Apk, ApkConfig};
-use ndk_build::cargo::{cargo_ndk, VersionCode};
-use ndk_build::dylibs::get_libs_search_paths;
-use ndk_build::error::NdkError;
-use ndk_build::manifest::{IntentFilter, MetaData};
-use ndk_build::ndk::{Key, Ndk};
-use ndk_build::target::Target;
+use ndk_build2::{
+    apk::{Apk, ApkConfig},
+    cargo::{cargo_ndk, VersionCode},
+    dylibs::get_libs_search_paths,
+    error::NdkError,
+    manifest::{IntentFilter, MetaData},
+    ndk::{Key, Ndk},
+    target::Target,
+};
 use std::path::PathBuf;
 
 pub struct ApkBuilder<'a> {
@@ -278,7 +282,7 @@ impl<'a> ApkBuilder<'a> {
                 );
                 Key {
                     path,
-                    password: ndk_build::ndk::DEFAULT_DEV_KEYSTORE_PASSWORD.to_owned(),
+                    password: ndk_build2::ndk::DEFAULT_DEV_KEYSTORE_PASSWORD.to_owned(),
                 }
             }
             (Some(path), None) => {

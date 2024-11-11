@@ -1,5 +1,5 @@
 use cargo_subcommand::Error as SubcommandError;
-use ndk_build::error::NdkError;
+use ndk_build2::error::NdkError;
 use std::io::Error as IoError;
 use thiserror::Error;
 use toml::de::Error as TomlError;

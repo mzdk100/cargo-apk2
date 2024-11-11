@@ -1,8 +1,9 @@
-use crate::error::NdkError;
-use crate::target::Target;
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use crate::{error::NdkError, target::Target};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 /// The default password used when creating the default `debug.keystore` via
 /// [`Ndk::debug_key`]
@@ -10,7 +11,6 @@ pub const DEFAULT_DEV_KEYSTORE_PASSWORD: &str = "android";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Ndk {
-    sdk_path: PathBuf,
     user_home: PathBuf,
     ndk_path: PathBuf,
     build_tools_version: String,
@@ -20,23 +20,6 @@ pub struct Ndk {
 
 impl Ndk {
     pub fn from_env() -> Result<Self, NdkError> {
-        let sdk_path = {
-            let sdk_path = std::env::var("ANDROID_SDK_ROOT").ok();
-            if sdk_path.is_some() {
-                eprintln!(
-                    "Warning: Environment variable ANDROID_SDK_ROOT is deprecated \
-                    (https://developer.android.com/studio/command-line/variables#envar). \
-                    It will be used until it is unset and replaced by ANDROID_HOME."
-                );
-            }
-
-            PathBuf::from(
-                sdk_path
-                    .or_else(|| std::env::var("ANDROID_HOME").ok())
-                    .ok_or(NdkError::SdkNotFound)?,
-            )
-        };
-
         let user_home = {
             let user_home = std::env::var("ANDROID_SDK_HOME")
                 .map(PathBuf::from)
@@ -59,6 +42,8 @@ impl Ndk {
                 .or_else(|| dirs::home_dir().map(|home| home.join(".android")))
                 .ok_or_else(|| NdkError::PathNotFound(PathBuf::from("$HOME")))?
         };
+        let sdk_path =
+            android_build::android_sdk().map_or(Err(NdkError::SdkNotFound), |i| Ok(i))?;
 
         let ndk_path = {
             let ndk_path = std::env::var("ANDROID_NDK_ROOT")
@@ -141,17 +126,12 @@ impl Ndk {
         }
 
         Ok(Self {
-            sdk_path,
             user_home,
             ndk_path,
             build_tools_version,
             build_tag,
             platforms,
         })
-    }
-
-    pub fn sdk(&self) -> &Path {
-        &self.sdk_path
     }
 
     pub fn ndk(&self) -> &Path {
@@ -171,8 +151,11 @@ impl Ndk {
     }
 
     pub fn build_tool(&self, tool: &str) -> Result<Command, NdkError> {
-        let path = self
-            .sdk_path
+        let Some(sdk_path) = android_build::android_sdk() else {
+            return Err(NdkError::SdkNotFound);
+        };
+
+        let path = sdk_path
             .join("build-tools")
             .join(&self.build_tools_version)
             .join(tool);
@@ -183,7 +166,10 @@ impl Ndk {
     }
 
     pub fn platform_tool_path(&self, tool: &str) -> Result<PathBuf, NdkError> {
-        let path = self.sdk_path.join("platform-tools").join(tool);
+        let Some(sdk_path) = android_build::android_sdk() else {
+            return Err(NdkError::SdkNotFound);
+        };
+        let path = sdk_path.join("platform-tools").join(tool);
         if !path.exists() {
             return Err(NdkError::CmdNotFound(tool.to_string()));
         }
@@ -211,8 +197,10 @@ impl Ndk {
     }
 
     pub fn platform_dir(&self, platform: u32) -> Result<PathBuf, NdkError> {
-        let dir = self
-            .sdk_path
+        let Some(sdk_path) = android_build::android_sdk() else {
+            return Err(NdkError::SdkNotFound);
+        };
+        let dir = sdk_path
             .join("platforms")
             .join(format!("android-{}", platform));
         if !dir.exists() {

@@ -1,6 +1,6 @@
 use crate::error::NdkError;
 use serde::{Deserialize, Serialize, Serializer};
-use std::{fs::File, path::Path};
+use std::{fs::File, io::Write, path::Path};
 
 /// Android [manifest element](https://developer.android.com/guide/topics/manifest/manifest-element), containing an [`Application`] element.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -55,9 +55,10 @@ impl Default for AndroidManifest {
 
 impl AndroidManifest {
     pub fn write_to(&self, dir: &Path) -> Result<(), NdkError> {
-        let file = File::create(dir.join("AndroidManifest.xml"))?;
-        let w = std::io::BufWriter::new(file);
-        quick_xml::se::to_writer(w, &self)?;
+        let mut buf = String::new();
+        quick_xml::se::to_writer(&mut buf, &self).map_err(|e| NdkError::Serialize(e))?;
+        let mut file = File::create(dir.join("AndroidManifest.xml"))?;
+        file.write_all(buf.as_bytes())?;
         Ok(())
     }
 }

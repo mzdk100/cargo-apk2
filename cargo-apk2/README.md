@@ -1,4 +1,4 @@
-# cargo apk
+# cargo apk2
 
 [![Actions Status](https://github.com/rust-mobile/cargo-apk/actions/workflows/rust.yml/badge.svg)](https://github.com/rust-mobile/cargo-apk/actions)
 [![Latest version](https://img.shields.io/crates/v/cargo-apk.svg?logo=rust)](https://crates.io/crates/cargo-apk)
@@ -102,7 +102,7 @@ shared_user_id = "my.shared.user.id"
 # as `<cfg>`, it is the uppercased profile name with `-` replaced with `_`.
 #
 # If present they take precedence over the signing information in the manifest.
-[package.metadata.android.signing.<profile>]
+[package.metadata.android.signing._profile_]
 path = "relative/or/absolute/path/to/my.keystore"
 keystore_password = "android"
 

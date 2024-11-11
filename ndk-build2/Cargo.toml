@@ -1,0 +1,28 @@
+[package]
+name = "ndk-build2"
+version = "0.10.0"
+authors = [
+    "SmileSky <mzdk100@foxmail.com>",
+    "The Rust Windowing contributors",
+]
+edition = "2021"
+description = "用于构建 Android 二进制文件的实用程序"
+license = "MIT OR Apache-2.0"
+keywords = ["android", "ndk", "apk"]
+repository = "https://github.com/mzdk100/cargo-apk2.git"
+rust-version = "1.82.0"
+
+[dependencies]
+android-build = "0.1.0"
+dirs = "5.0.1"
+dunce.workspace = true
+thiserror.workspace = true
+which = "7.0.0"
+
+[dependencies.serde]
+workspace = true
+features = ["derive"]
+
+[dependencies.quick-xml]
+version = "0.37.0"
+features = ["serialize"]
