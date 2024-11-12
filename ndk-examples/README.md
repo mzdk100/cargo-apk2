@@ -1,26 +1,26 @@
-# ndk-examples
+# ndk-示例
 
-Collection of examples showing different parts of the libraries.
+展示库不同部分的示例集合。
 
-## Examples
+## 示例
 
-In order to see logs of the sample apps execute in a console:
-```console
-$ adb logcat RustStdoutStderr:D '*:S'
+为了查看示例应用程序在控制台中执行的日志：
+```shell
+adb logcat RustStdoutStderr:D '*:S'
 ```
 
 ### hello_world
 
-Prints `hello world` in the console
+在控制台中打印“hello world”
 
-```console
-$ cargo apk build --example hello_world
+```shell
+cargo apk2 build --example hello_world
 ```
 
 ### jni_audio
 
-Prints output audio devices in the console
+在控制台中打印输出音频设备
 
-```console
-$ cargo apk run --example jni_audio
+```shell
+cargo apk2 run --example jni_audio
 ```

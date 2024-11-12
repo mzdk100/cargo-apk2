@@ -1,119 +1,120 @@
-# Unreleased
+# 未发布
 
 # 0.10.0 (2023-11-30)
 
-- Bump MSRV to 1.70 to reflect dependency updates.
-- Bump `ndk-build` to [`0.10.0`](https://github.com/rust-mobile/cargo-apk/releases/tag/ndk-build-0.10.0) with various fixes:
-  - Improved log filtering based on UID instead of PID;
-  - Support for building APKs from an Android host;
-  - More manifest attributes are now supported on the `Application` and `Activity` elements.
-- Improved artifacts based on https://github.com/rust-mobile/cargo-subcommand/pull/17 to support renames of `[lib]`, `[[bin]]` and `[[example]]`. ([#26](https://github.com/rust-mobile/cargo-apk/pull/26))
+- 将MSRV提升到1.70，以反映依赖项更新。
+- 将 `ndk-build` 升级到 [`0.10.0`](https://github.com/rust-mobile/cargo-apk/releases/tag/ndk-build-0.10.0)，并修复了各种问题：
+  - 改进了基于UID而不是PID的日志过滤；
+  - 支持从Android主机构建APK；
+  - 现在在 `Application` 和 `Activity` 元素上支持更多的清单属性。
+- 基于https://github.com/rust-mobile/cargo-subcommand/pull/17改进了工件，以支持 `[lib]`、`[[bin]]` 和 `[[example]]` 的重命名。([#26](https://github.com/rust-mobile/cargo-apk/pull/26))
 
 # 0.9.7 (2022-12-12)
 
-- Reimplement default package selection based on `$PWD` or `--manifest-path` by upgrading to [`cargo-subcommand 0.11.0`](https://github.com/rust-mobile/cargo-subcommand/releases/tag/0.11.0). ([#4](https://github.com/rust-mobile/cargo-apk/pull/4))
-- Removed known-arg parsing from `cargo apk --` to not make argument flags/values get lost, see also [#375](https://github.com/rust-windowing/android-ndk-rs/issues/375). ([#377](https://github.com/rust-windowing/android-ndk-rs/pull/377))
+- 通过升级到 [`cargo-subcommand 0.11.0`](https://github.com/rust-mobile/cargo-subcommand/releases/tag/0.11.0) 来重新实现基于 `$PWD` 或 `--manifest-path` 的默认包选择。([#4](https://github.com/rust-mobile/cargo-apk/pull/4))
+- 从 `cargo apk --` 中移除已知参数解析，以避免使参数标志/值丢失，另请参见 [#375](https://github.com/rust-windowing/android-ndk-rs/issues/375)。([#377](https://github.com/rust-windowing/android-ndk-rs/pull/377))
 
 # 0.9.6 (2022-11-23)
 
-- Profile signing information can now be specified via the `CARGO_APK_<PROFILE>_KEYSTORE` and `CARGO_APK_<PROFILE>_KEYSTORE_PASSWORD` environment variables. The environment variables take precedence over signing information in the cargo manifest. Both environment variables are required except in the case of the `dev` profile, which will fall back to the default password if `CARGO_APK_DEV_KEYSTORE_PASSWORD` is not set. ([#358](https://github.com/rust-windowing/android-ndk-rs/pull/358))
-- Add `strip` option to `android` metadata, allowing a user to specify how they want debug symbols treated after cargo has finished building, but before the shared object is copied into the APK. ([#356](https://github.com/rust-windowing/android-ndk-rs/pull/356))
-- Support [`[workspace.package]` inheritance](https://doc.rust-lang.org/cargo/reference/workspaces.html#the-workspacepackage-table) from a workspace root manifest for the `version` field under `[package]`. ([#360](https://github.com/rust-windowing/android-ndk-rs/pull/360))
+- 通过环境变量 `CARGO_APK_<PROFILE>_KEYSTORE` 和 `CARGO_APK_<PROFILE>_KEYSTORE_PASSWORD` 指定签名信息，这些环境变量优先于清单中的签名信息。除了 `dev` 配置文件外，这两个环境变量都是必需的，除非未设置 `CARGO_APK_DEV_KEYSTORE_PASSWORD`，此时将回退到默认密码。([#358](https://github.com/rust-windowing/android-ndk-rs/pull/358))
+- 添加 `strip` 选项到 `android` 元数据，允许用户指定在 `cargo` 完成构建但在共享对象复制到APK之前如何处理调试符号。([#356](https://github.com/rust-windowing/android-ndk-rs/pull/356))
+- 支持 `[workspace.package]` 从工作区根清单继承的 `version` 字段。([#360](https://github.com/rust-windowing/android-ndk-rs/pull/360))
 
-(0.9.5, released on 2022-10-14, was yanked due to unintentionally bumping MSRV through the `quick-xml` crate, and breaking `cargo apk --` parsing after switching to `clap`.)
+(0.9.5，于2022-10-14发布，由于无意中通过 `quick-xml` crate 提升MSRV，并在切换到 `clap` 后破坏 `cargo apk --` 解析而被撤销。)
 
-- Update to `cargo-subcommand 0.8.0` with `clap` argument parser. ([#238](https://github.com/rust-windowing/android-ndk-rs/pull/238))
-- Automate `adb reverse` port forwarding through `Cargo.toml` metadata ([#348](https://github.com/rust-windowing/android-ndk-rs/pull/348))
+- 更新到 `cargo-subcommand 0.8.0`，使用 `clap` 参数解析器。([#238](https://github.com/rust-windowing/android-ndk-rs/pull/238))
+- 通过 `Cargo.toml` 元数据自动化 `adb reverse` 端口转发。([#348](https://github.com/rust-windowing/android-ndk-rs/pull/348))
 
 # 0.9.4 (2022-09-12)
 
-- Upgrade to latest `ndk-build` to deduplicate libraries before packaging them into the APK. ([#333](https://github.com/rust-windowing/android-ndk-rs/pull/333))
-- Support `android:resizeableActivity`. ([#338](https://github.com/rust-windowing/android-ndk-rs/pull/338))
-- Add `--device` argument to select `adb` device by serial (see `adb devices` for connected devices and their serial). ([#329](https://github.com/rust-windowing/android-ndk-rs/pull/329))
-- Print and follow `adb logcat` output after starting app. ([#332](https://github.com/rust-windowing/android-ndk-rs/pull/332))
+- 通过在打包APK之前对齐库来升级到最新的 `ndk-build`。([#333](https://github.com/rust-windowing/android-ndk-rs/pull/333))
+- 支持 `android:resizeableActivity`。([#338](https://github.com/rust-windowing/android-ndk-rs/pull/338))
+- 添加 `--device` 参数以通过序列选择 `adb` 设备（参见 `adb devices` 以获取连接的设备和它们的序列号）。([#329](https://github.com/rust-windowing/android-ndk-rs/pull/329))
+- 启动应用后打印并跟随 `adb logcat` 输出。([#332](https://github.com/rust-windowing/android-ndk-rs/pull/332))
 
 # 0.9.3 (2022-07-05)
 
-- Allow configuration of alternate debug keystore location; require keystore location for release builds. ([#299](https://github.com/rust-windowing/android-ndk-rs/pull/299))
-- **Breaking:** Rename `Activity::intent_filters` back to `Activity::intent_filter`. ([#305](https://github.com/rust-windowing/android-ndk-rs/pull/305))
+- 允许配置备用调试密钥库位置；要求发布构建的密钥库位置。([#299](https://github.com/rust-windowing/android-ndk-rs/pull/299))
+- **破坏性变更：** 将 `Activity::intent_filters` 重命名为 `Activity::intent_filter`。([#305](https://github.com/rust-windowing/android-ndk-rs/pull/305))
 
 # 0.9.2 (2022-06-11)
 
-- Move NDK r23 `-lgcc` workaround to `ndk_build::cargo::cargo_ndk()`, to also apply to our `cargo apk --` invocations. ([#286](https://github.com/rust-windowing/android-ndk-rs/pull/286))
-- Disable `aapt` compression for the [(default) `dev` profile](https://doc.rust-lang.org/cargo/reference/profiles.html). ([#283](https://github.com/rust-windowing/android-ndk-rs/pull/283))
-- Append `--target` to blanket `cargo apk --` calls when not provided by the user. ([#287](https://github.com/rust-windowing/android-ndk-rs/pull/287))
+- 将 NDK r23 `-lgcc` 工作区移动到 `ndk_build::cargo::cargo_ndk()`，以也适用于我们的 `cargo apk --` 调用。([#286](https://github.com/rust-windowing/android-ndk-rs/pull/286))
+- 为 [(默认) `dev` 配置文件](https://doc.rust-lang.org/cargo/reference/profiles.html)禁用 `aapt` 压缩。([#283](https://github.com/rust-windowing/android-ndk-rs/pull/283))
+- 当用户未提供时，将 `--target` 追加到 blanket `cargo apk --` 调用中。([#287](https://github.com/rust-windowing/android-ndk-rs/pull/287))
 
 # 0.9.1 (2022-05-12)
 
-- Reimplement NDK r23 `-lgcc` workaround using `RUSTFLAGS`, to apply to transitive `cdylib` compilations. (#270)
+- 使用 `RUSTFLAGS` 重新实现 NDK r23 `-lgcc` 工作区，以应用于传递的 `cdylib` 编译。
 
 # 0.9.0 (2022-05-07)
 
-- **Breaking:** Use `min_sdk_version` to select compiler target instead of `target_sdk_version`. ([#197](https://github.com/rust-windowing/android-ndk-rs/pull/197))
-  See <https://developer.android.com/ndk/guides/sdk-versions#minsdkversion> for more details.
-- **Breaking:** Default `target_sdk_version` to `30` or lower (instead of the highest supported SDK version by the detected NDK toolchain)
-  for more consistent interaction with Android backwards compatibility handling and its increasingly strict usage rules:
+- **破坏性变更：** 使用 `min_sdk_version` 而不是 `target_sdk_version` 来选择编译器目标。([#197](https://github.com/rust-windowing/android-ndk-rs/pull/197))
+  有关更多详细信息，请参阅 <https://developer.android.com/ndk/guides/sdk-versions#minsdkversion>。
+- **破坏性变更：** 默认 `target_sdk_version` 为 `30` 或更低（而不是检测到的 NDK 工具链支持的最高 SDK 版本）
+  以更一致地与 Android 向后兼容处理及其日益严格的用法规则进行交互：
   <https://developer.android.com/distribute/best-practices/develop/target-sdk>
   ([#203](https://github.com/rust-windowing/android-ndk-rs/pull/203))
-- Allow manifest `package` property to be provided in `Cargo.toml`. ([#236](https://github.com/rust-windowing/android-ndk-rs/pull/236))
-- Add `MAIN` intent filter in `from_subcommand` instead of relying on a custom serialization function in `ndk-build`. ([#241](https://github.com/rust-windowing/android-ndk-rs/pull/241))
-- Export the sole `NativeActivity` (through `android:exported="true"`) to allow it to be started by default if targeting Android S or higher. ([#242](https://github.com/rust-windowing/android-ndk-rs/pull/242))
-- `cargo-apk` version can now be queried through `cargo apk version`. ([#218](https://github.com/rust-windowing/android-ndk-rs/pull/218))
-- Environment variables from `.cargo/config.toml`'s `[env]` section are now propagated to the process environment. ([#249](https://github.com/rust-windowing/android-ndk-rs/pull/249))
+- 允许在 `Cargo.toml` 中提供清单的 `package` 属性。([#236](https://github.com/rust-windowing/android-ndk-rs/pull/236))
+- 在 `from_subcommand` 中添加 `MAIN` intent 过滤器，而不是依赖 `ndk-build` 中的自定义序列化函数。([#241](https://github.com/rust-windowing/android-ndk-rs/pull/241))
+- 通过 `android:exported="true"` 导出唯一的 `NativeActivity`，以允许在目标 Android S 或更高版本时默认启动它。([#242](https://github.com/rust-windowing/android-ndk-rs/pull/242))
+- 现在可以通过 `cargo apk version` 查询 `cargo-apk` 版本。([#218](https://github.com/rust-windowing/android-ndk-rs/pull/218))
+- 从 `.cargo/config.toml` 的 `[env]` 部分传播环境变量到进程环境。([#249](https://github.com/rust-windowing/android-ndk-rs/pull/249))
 
 # 0.8.2 (2021-11-22)
 
-- Fixed the library name in case of multiple build artifacts in the Android manifest.
-- Work around missing `libgcc` on NDK r23 beta 3 and above, by providing linker script that "redirects" to `libunwind`.
-  See <https://github.com/rust-windowing/android-ndk-rs/issues/149> and <https://github.com/rust-lang/rust/pull/85806> for more details.
+- 修复了清单中多个构建工件的情况下的库名称。
+- 通过提供将 `libgcc` 重定向到 `libunwind` 的链接器脚本来解决 NDK r23 beta 3 及以上版本中缺少 `libgcc` 的问题。
+  有关更多详细信息，请参阅 <https://github.com/rust-windowing/android-ndk-rs/issues/149> 和 <https://github.com/rust-lang/rust/pull/85806>。
 
 # 0.8.1 (2021-08-06)
 
-- Updated to use [ndk-build 0.4.2](../ndk-build2/CHANGELOG.md#042-2021-08-06)
+- 更新到使用 [ndk-build 0.4.2](../ndk-build2/CHANGELOG.md#042-2021-08-06)
 
 # 0.8.0 (2021-07-06)
 
-- Added `runtime_libs` path to android metadata for packaging extra dynamic libraries into the apk.
+- 添加 `runtime_libs` 路径到 android 元数据，用于将额外的动态库打包到APK中。
 
 # 0.7.0 (2021-05-10)
 
-- Added `cargo apk check`. Useful for compile-testing crates that contain C/C++ dependencies or
-  target-specific conditional compilation, but do not provide a cdylib target.
-- Added `apk_name` field to android metadata for APK file naming (defaults to Rust library name if unspecified).
-  The application label is now no longer used for this purpose, and can contain a string resource ID from now on.
+- 添加 `cargo apk check`。对于包含 C/C++ 依赖项或目标特定条件编译的编译测试crate非常有用，但不提供 cdylib 目标。
+- 添加 `apk_name` 字段到 android 元数据，用于APK文件命名（如果未指定，则默认为 Rust 库名称）。
+  从现在起，应用程序标签不再用于此目的，并且可以包含字符串资源ID。
 
 # 0.6.0 (2021-04-20)
 
-- **Breaking:** uses `ndk-build`'s new (de)serialized `Manifest` struct to properly serialize a toml's `[package.metadata.android]` to an `AndroidManifest.xml`. The `[package.metadata.android]` now closely resembles the structure of [an android manifest file](https://developer.android.com/guide/topics/manifest/manifest-element). See [README](README.md) for an example of the new `[package.metadata.android]` structure and all manifest attributes that are currently supported.
+- **破坏性变更：** 使用 `ndk-build` 的新（反）序列化 `Manifest` 结构来正确地将 toml 的 `[package.metadata.android]` 序列化为 `AndroidManifest.xml`。
+  `[package.metadata.android]` 现在几乎与 [一个android清单文件](https://developer.android.com/guide/topics/manifest/manifest-element) 相匹配。
+  请参阅 [README](README.md) 以了解新的 `[package.metadata.android]` 结构和当前支持的所有清单属性。
 
 # 0.5.6 (2020-11-25)
 
-- Use `dunce::simplified` when extracting the manifest's assets and resource folder
-- Updated to use [ndk-build 0.1.4](../ndk-build2/CHANGELOG.md#014-2020-11-25)
+- 使用 `dunce::simplified` 来提取清单的资源和资源文件夹
+- 更新到使用 [ndk-build 0.1.4](../ndk-build2/CHANGELOG.md#014-2020-11-25)
 
 # 0.5.5 (2020-11-21)
 
-- Updated to use [ndk-build 0.1.3](../ndk-build2/CHANGELOG.md#013-2020-11-21)
+- 更新到使用 [ndk-build 0.1.3](../ndk-build2/CHANGELOG.md#013-2020-11-21)
 
 # 0.5.4 (2020-11-01)
 
-- Added support for activity metadata entries.
-- Fix glob member resolution in workspaces.
+- 添加了对活动元数据条目的支持。
+- 修复工作区中的 glob 成员解析。
 
 # 0.5.3 (2020-10-15)
 
-- Fix `res` folder resolve.
+- 修复 `res` 文件夹解析。
 
 # 0.5.2 (2020-09-15)
 
-- Updated to use [ndk-build 0.1.2](../ndk-build2/CHANGELOG.md#012-2020-09-15)
+- 更新到使用 [ndk-build 0.1.2](../ndk-build2/CHANGELOG.md#012-2020-09-15)
 
 # 0.5.1 (2020-07-15)
 
-- Updated to use [ndk-build 0.1.1](../ndk-build2/CHANGELOG.md#011-2020-07-15)
+- 更新到使用 [ndk-build 0.1.1](../ndk-build2/CHANGELOG.md#011-2020-07-15)
 
 # 0.5.0 (2020-04-22)
 
-- Updated to use [ndk-build 0.1.0](../ndk-build2/CHANGELOG.md#010-2020-04-22)
-- First release in almost 3 years! 🎉
-- **Breaking:** A ton of things changed!
+- 更新到使用 [ndk-build 0.1.0](../ndk-build2/CHANGELOG.md#010-2020-04-22)
+- 几乎3年来的首次发布！🎉
+- **破坏性变更：** 许多事情都变了！
