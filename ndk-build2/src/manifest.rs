@@ -316,7 +316,10 @@ where
 pub struct Permission {
     #[serde(rename(serialize = "@android:name"))]
     pub name: String,
-    #[serde(rename(serialize = "@android:maxSdkVersion"))]
+    #[serde(
+        rename(serialize = "@android:maxSdkVersion"),
+        skip_serializing_if = "Option::is_none"
+    )]
     pub max_sdk_version: Option<u32>,
 }
 
