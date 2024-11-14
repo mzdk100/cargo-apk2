@@ -1,5 +1,9 @@
 # 未发布
 
+# 1.0.0 (2024-11-14)
+
+- 支持aapt2工具对apk资源的编译和处理。
+
 # 0.10.0 (2023-11-30)
 
 - 在清单的 `Application` 元素中添加 `android:extractNativeLibs`、`android:usesCleartextTraffic` 属性，并在 `Activity` 元素中添加 `android:alwaysRetainTaskState`。([#15](https://github.com/rust-mobile/cargo-apk/pull/15))

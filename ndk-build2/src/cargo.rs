@@ -1,8 +1,12 @@
-use crate::error::NdkError;
-use crate::ndk::Ndk;
-use crate::target::Target;
-use std::path::Path;
-use std::process::Command;
+use crate::{
+    error::NdkError,
+    ndk::Ndk,
+    target::Target
+};
+use std::{
+    path::Path,
+    process::Command
+};
 
 pub fn cargo_ndk(
     ndk: &Ndk,

@@ -13,15 +13,18 @@ pub enum Inheritable<T> {
     Inherited { workspace: bool },
 }
 
+#[derive(Debug)]
 pub(crate) struct Manifest {
     pub(crate) version: Inheritable<String>,
     pub(crate) apk_name: Option<String>,
+    /// 使用aapt2编译和处理资源（默认开启）
+    pub use_aapt2: Option<bool>,
     pub(crate) android_manifest: AndroidManifest,
     pub(crate) build_targets: Vec<Target>,
     pub(crate) assets: Option<PathBuf>,
     pub(crate) resources: Option<PathBuf>,
     pub(crate) runtime_libs: Option<PathBuf>,
-    /// Maps profiles to keystores
+    /// 将配置文件映射到密钥库
     pub(crate) signing: HashMap<String, Signing>,
     pub(crate) reverse_port_forward: HashMap<String, String>,
     pub(crate) strip: StripConfig,
@@ -43,6 +46,7 @@ impl Manifest {
         Ok(Self {
             version: package.version,
             apk_name: metadata.apk_name,
+            use_aapt2: metadata.use_aapt2,
             android_manifest: metadata.android_manifest,
             build_targets: metadata.build_targets,
             assets: metadata.assets,
@@ -94,6 +98,8 @@ pub(crate) struct PackageMetadata {
 #[derive(Clone, Debug, Default, Deserialize)]
 struct AndroidMetadata {
     apk_name: Option<String>,
+    /// 使用aapt2编译和处理资源（默认开启）
+    use_aapt2: Option<bool>,
     #[serde(flatten)]
     android_manifest: AndroidManifest,
     #[serde(default)]

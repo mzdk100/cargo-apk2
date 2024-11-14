@@ -1,16 +1,13 @@
 [package]
 name = "cargo-apk2"
-version = "0.10.0"
-authors = [
-    "SmileSky <mzdk100@foxmail.com>",
-    "The Rust Windowing contributors"
-]
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
 description = "Rust轻松构建安卓应用的Cargo扩展"
-license = "MIT OR Apache-2.0"
-keywords = ["android", "ndk", "apk"]
-repository = "https://github.com/mzdk100/cargo-apk2.git"
-rust-version = "1.82.0"
+license.workspace = true
+keywords.workspace = true
+repository.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 anyhow = "1.0.93"
@@ -24,7 +21,7 @@ toml = "0.8.19"
 
 [dependencies.ndk-build2]
 path = "../ndk-build2"
-version = "0.10.0"
+version = "1.0.0"
 
 [dependencies.clap]
 version = "4.5.20"

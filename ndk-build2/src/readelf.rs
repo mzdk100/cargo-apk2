@@ -41,8 +41,7 @@ impl<'a> UnalignedApk<'a> {
         while let Some(artifact) = artifacts.pop() {
             self.add_lib(&artifact, target)?;
             for need in list_needed_libs(&readelf_path, &artifact)? {
-                // c++_shared is available in the NDK but not on-device.
-                // Must be bundled with the apk if used:
+                // c++_shared 在 NDK 中可用，但在设备上不可用。如果使用，必须与 apk 捆绑在一起：
                 // https://developer.android.com/ndk/guides/cpp-support#libc
                 let search_paths = if need == "libc++_shared.so" {
                     &android_search_paths

@@ -14,7 +14,7 @@ adb logcat RustStdoutStderr:D '*:S'
 在控制台中打印“hello world”
 
 ```shell
-cargo apk2 build --example hello_world
+cargo apk2 run --example hello_world
 ```
 
 ### jni_audio

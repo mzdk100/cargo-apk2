@@ -4,43 +4,39 @@ use crate::{
     ndk::{Key, Ndk},
     target::Target,
 };
+use serde::Serialize;
 use std::{
     collections::{HashMap, HashSet},
     ffi::OsStr,
-    fs::{copy, create_dir_all, read_dir},
+    fs::{copy, create_dir_all, read_dir, remove_file, rename},
     path::{Path, PathBuf},
     process::Command,
 };
 
-/// The options for how to treat debug symbols that are present in any `.so`
-/// files that are added to the APK.
+//noinspection SpellCheckingInspection
+/// 如何处理添加到 APK 的任何 `.so` 文件中的调试符号的选项。
 ///
-/// Using [`strip`](https://doc.rust-lang.org/cargo/reference/profiles.html#strip)
-/// or [`split-debuginfo`](https://doc.rust-lang.org/cargo/reference/profiles.html#split-debuginfo)
-/// in your cargo manifest(s) may cause debug symbols to not be present in a
-/// `.so`, which would cause these options to do nothing.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Deserialize)]
+/// 在您的货物清单中使用
+/// [`strip`](https://doc.rust-lang.org/cargo/reference/profiles.html#strip)
+/// 或 [`split-debuginfo`](https://doc.rust-lang.org/cargo/reference/profiles.html#split-debuginfo)
+/// 可能会导致调试符号不存在于 `.so` 中，从而导致这些选项不执行任何操作。
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, serde::Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StripConfig {
-    /// Does not treat debug symbols specially
+    /// 不对调试符号进行特殊处理
+    #[default]
     Default,
-    /// Removes debug symbols from the library before copying it into the APK
+    /// 在将库复制到 APK 之前，从库中删除调试符号
     Strip,
-    /// Splits the library into into an ELF (`.so`) and DWARF (`.dwarf`). Only the
-    /// `.so` is copied into the APK
+    /// 将库拆分为 ELF（`.so`）和 DWARF（`.dwarf`）。只有 `.so` 会被复制到 APK 中
     Split,
-}
-
-impl Default for StripConfig {
-    fn default() -> Self {
-        Self::Default
-    }
 }
 
 pub struct ApkConfig {
     pub ndk: Ndk,
     pub build_dir: PathBuf,
     pub apk_name: String,
+    pub use_aapt2: bool,
     pub assets: Option<PathBuf>,
     pub resources: Option<PathBuf>,
     pub manifest: AndroidManifest,
@@ -61,8 +57,7 @@ impl ApkConfig {
             .join(format!("{}-unaligned.apk", self.apk_name))
     }
 
-    /// Retrieves the path of the APK that will be written when [`UnsignedApk::sign`]
-    /// is invoked
+    /// 调用 [`UnsignedApk::sign`] 时将写入的 APK 的路径
     #[inline]
     pub fn apk(&self) -> PathBuf {
         self.build_dir.join(format!("{}.apk", self.apk_name))
@@ -77,7 +72,30 @@ impl ApkConfig {
             .sdk
             .target_sdk_version
             .unwrap_or_else(|| self.ndk.default_target_platform());
+
+        if self.use_aapt2 {
+            let out_dir = self
+                .build_dir
+                .join(format!("compiled_{}_resource", self.manifest.package).as_str());
+            self.aapt2_compile(&out_dir)?;
+            self.aapt2_link(target_sdk_version)?;
+            if !self.manifest.application.debuggable.unwrap_or(false) {
+                self.aapt2_optimize()?;
+            }
+            remove_file(out_dir)?;
+        } else {
+            self.aapt_package(target_sdk_version)?;
+        }
+
+        Ok(UnalignedApk {
+            config: self,
+            pending_libs: HashSet::default(),
+        })
+    }
+
+    fn aapt_package(&self, target_sdk_version: u32) -> Result<(), NdkError> {
         let mut aapt = self.build_tool(bin!("aapt"))?;
+        println!("Packing apk resources......");
         aapt.arg("package")
             .arg("-f")
             .arg("-F")
@@ -102,11 +120,67 @@ impl ApkConfig {
         if !aapt.status()?.success() {
             return Err(NdkError::CmdFailed(aapt));
         }
+        Ok(())
+    }
 
-        Ok(UnalignedApk {
-            config: self,
-            pending_libs: HashSet::default(),
-        })
+    fn aapt2_compile(&self, out_dir: impl AsRef<OsStr>) -> Result<(), NdkError> {
+        let mut aapt = self.build_tool(bin!("aapt2"))?;
+        println!("Compiling apk resources...");
+        aapt.arg("compile").arg("-o").arg(out_dir);
+
+        if let Some(res) = &self.resources {
+            aapt.arg("--dir").arg(res);
+        }
+
+        if !aapt.status()?.success() {
+            return Err(NdkError::CmdFailed(aapt));
+        }
+        Ok(())
+    }
+
+    fn aapt2_link(&self, target_sdk_version: u32) -> Result<(), NdkError> {
+        let mut aapt = self.build_tool(bin!("aapt2"))?;
+        println!("Linking apk resources...");
+        aapt.arg("link")
+            .arg("-o")
+            .arg(self.unaligned_apk())
+            .arg("--manifest")
+            .arg("AndroidManifest.xml")
+            .arg("-I")
+            .arg(self.ndk.android_jar(target_sdk_version)?);
+
+        if self.disable_aapt_compression {
+            aapt.arg("--no-compress").arg("-0").arg("");
+        }
+
+        if let Some(assets) = &self.assets {
+            aapt.arg("-A").arg(assets);
+        }
+
+        if !aapt.status()?.success() {
+            return Err(NdkError::CmdFailed(aapt));
+        }
+        Ok(())
+    }
+
+    fn aapt2_optimize(&self) -> Result<(), NdkError> {
+        let mut aapt = self.build_tool(bin!("aapt2"))?;
+        println!("Optimizing apk resources...");
+        let path = self.unaligned_apk();
+        let input_path = path.parent().unwrap().join(&self.manifest.package);
+        rename(&path, &input_path)?;
+        aapt.arg("optimize")
+            .arg("-o")
+            .arg(path)
+            .arg(&input_path)
+            .arg("--enable-sparse-encoding");
+
+        if !aapt.status()?.success() {
+            remove_file(input_path)?;
+            return Err(NdkError::CmdFailed(aapt));
+        }
+        remove_file(input_path)?;
+        Ok(())
     }
 }
 

@@ -1,10 +1,11 @@
 use android_activity::AndroidApp;
-use log::info;
+use android_logger::{init_once, Config};
+use log::{info, LevelFilter};
 use ndk::trace;
 
 #[no_mangle]
 fn android_main(_app: AndroidApp) {
-    android_logger::init_once(android_logger::Config::default().with_min_level(log::Level::Info));
+    init_once(Config::default().with_max_level(LevelFilter::Info));
 
     let _trace;
     if trace::is_trace_enabled() {

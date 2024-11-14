@@ -1,12 +1,13 @@
 use crate::{error::NdkError, target::Target};
 use std::{
     collections::HashMap,
+    env::var,
+    fs::read_dir,
     path::{Path, PathBuf},
     process::Command,
 };
 
-/// The default password used when creating the default `debug.keystore` via
-/// [`Ndk::debug_key`]
+/// 通过 [`Ndk::debug_key`] 创建默认 `debug.keystore` 时使用的默认密码
 pub const DEFAULT_DEV_KEYSTORE_PASSWORD: &str = "android";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -19,11 +20,12 @@ pub struct Ndk {
 }
 
 impl Ndk {
+    //noinspection SpellCheckingInspection
     pub fn from_env() -> Result<Self, NdkError> {
         let user_home = {
-            let user_home = std::env::var("ANDROID_SDK_HOME")
+            let user_home = var("ANDROID_SDK_HOME")
                 .map(PathBuf::from)
-                // Unlike ANDROID_USER_HOME, ANDROID_SDK_HOME points to the _parent_ directory of .android:
+                // 与 ANDROID_USER_HOME 不同，ANDROID_SDK_HOME 指向 .android 的 _父_ 目录：
                 // https://developer.android.com/studio/command-line/variables#envar
                 .map(|home| home.join(".android"))
                 .ok();
@@ -36,9 +38,9 @@ impl Ndk {
                 );
             }
 
-            // Default to $HOME/.android
+            // 默认为 $HOME/.android
             user_home
-                .or_else(|| std::env::var("ANDROID_USER_HOME").map(PathBuf::from).ok())
+                .or_else(|| var("ANDROID_USER_HOME").map(PathBuf::from).ok())
                 .or_else(|| dirs::home_dir().map(|home| home.join(".android")))
                 .ok_or_else(|| NdkError::PathNotFound(PathBuf::from("$HOME")))?
         };
@@ -46,13 +48,13 @@ impl Ndk {
             android_build::android_sdk().map_or(Err(NdkError::SdkNotFound), |i| Ok(i))?;
 
         let ndk_path = {
-            let ndk_path = std::env::var("ANDROID_NDK_ROOT")
+            let ndk_path = var("ANDROID_NDK_ROOT")
                 .ok()
-                .or_else(|| std::env::var("ANDROID_NDK_PATH").ok())
-                .or_else(|| std::env::var("ANDROID_NDK_HOME").ok())
-                .or_else(|| std::env::var("NDK_HOME").ok());
+                .or_else(|| var("ANDROID_NDK_PATH").ok())
+                .or_else(|| var("ANDROID_NDK_HOME").ok())
+                .or_else(|| var("NDK_HOME").ok());
 
-            // default ndk installation path
+            // 默认 ndk 安装路径
             if ndk_path.is_none() && sdk_path.join("ndk-bundle").exists() {
                 sdk_path.join("ndk-bundle")
             } else {
@@ -61,7 +63,7 @@ impl Ndk {
         };
 
         let build_tools_dir = sdk_path.join("build-tools");
-        let build_tools_version = std::fs::read_dir(&build_tools_dir)
+        let build_tools_version = read_dir(&build_tools_dir)
             .or(Err(NdkError::PathNotFound(build_tools_dir)))?
             .filter_map(|path| path.ok())
             .filter(|path| path.path().is_dir())
@@ -80,13 +82,12 @@ impl Ndk {
                     .split_once('=')
                     .expect("Failed to parse `key = value` from source.properties");
                 if key.trim() == "Pkg.Revision" {
-                    // AOSP writes a constantly-incrementing build version to the patch field.
-                    // This number is incrementing across NDK releases.
+                    // AOSP 将不断增加的版本号写入补丁字段。此数字会随着 NDK 版本的推移而不断增加。
                     let mut parts = value.trim().split('.');
                     let _major = parts.next().unwrap();
                     let _minor = parts.next().unwrap();
                     let patch = parts.next().unwrap();
-                    // Can have an optional `XXX-beta1`
+                    // 可以有一个可选的“XXX-beta1”
                     let patch = patch.split_once('-').map_or(patch, |(patch, _beta)| patch);
                     Some(patch.parse().expect("Failed to parse patch field"))
                 } else {
@@ -109,7 +110,7 @@ impl Ndk {
             .unwrap();
 
         let platforms_dir = sdk_path.join("platforms");
-        let platforms: Vec<u32> = std::fs::read_dir(&platforms_dir)
+        let platforms: Vec<u32> = read_dir(&platforms_dir)
             .or(Err(NdkError::PathNotFound(platforms_dir)))?
             .filter_map(|path| path.ok())
             .filter(|path| path.path().is_dir())
@@ -188,12 +189,11 @@ impl Ndk {
         self.platforms().iter().max().cloned().unwrap()
     }
 
-    /// Returns platform `30` as currently [required by Google Play], or lower
-    /// when the detected SDK does not support it yet.
+    /// 返回当前 [Google Play 所要求的] 平台“35”或更低版本（如果检测到的 SDK 尚不支持）。
     ///
-    /// [required by Google Play]: https://developer.android.com/distribute/best-practices/develop/target-sdk
+    /// [Google Play 要求]: https://developer.android.com/distribute/best-practices/develop/target-sdk
     pub fn default_target_platform(&self) -> u32 {
-        self.highest_supported_platform().min(30)
+        self.highest_supported_platform().min(35)
     }
 
     pub fn platform_dir(&self, platform: u32) -> Result<PathBuf, NdkError> {
@@ -209,16 +209,17 @@ impl Ndk {
         Ok(dir)
     }
 
-    pub fn android_jar(&self, platform: u32) -> Result<PathBuf, NdkError> {
-        let android_jar = self.platform_dir(platform)?.join("android.jar");
-        if !android_jar.exists() {
-            return Err(NdkError::PathNotFound(android_jar));
-        }
+    pub fn android_jar(&self, api_level: u32) -> Result<PathBuf, NdkError> {
+        let Some(android_jar) =
+            android_build::android_jar(Some(format!("android-{}", api_level).as_str()))
+        else {
+            return Err(NdkError::PlatformNotFound(api_level));
+        };
         Ok(android_jar)
     }
 
     fn host_arch() -> Result<&'static str, NdkError> {
-        let host_os = std::env::var("HOST").ok();
+        let host_os = var("HOST").ok();
         let host_contains = |s| host_os.as_ref().map(|h| h.contains(s)).unwrap_or(false);
 
         Ok(if host_contains("linux") {
@@ -294,7 +295,7 @@ impl Ndk {
         let toolchain_path = self.toolchain_dir()?.join("bin");
 
         // Since r21 (https://github.com/android/ndk/wiki/Changelog-r21) LLVM binutils are included _for testing_;
-        // Since r22 (https://github.com/android/ndk/wiki/Changelog-r22) GNU binutils are deprecated in favour of LLVM's;
+        // Since r22 (https://github.com/android/ndk/wiki/Changelog-r22) GNU binutils are deprecated in favour of LL-VM's;
         // Since r23 (https://github.com/android/ndk/wiki/Changelog-r23) GNU binutils have been removed.
         // To maintain stability with the current ndk-build crate release, prefer GNU binutils for
         // as long as it is provided by the NDK instead of trying to use llvm-* from r21 onwards.
@@ -369,7 +370,7 @@ impl Ndk {
         if let Ok(keytool) = which::which(bin!("keytool")) {
             return Ok(Command::new(keytool));
         }
-        if let Ok(java) = std::env::var("JAVA_HOME") {
+        if let Some(java) = android_build::java_home() {
             let keytool = PathBuf::from(java).join("bin").join(bin!("keytool"));
             if keytool.exists() {
                 return Ok(Command::new(keytool));
@@ -378,6 +379,7 @@ impl Ndk {
         Err(NdkError::CmdNotFound("keytool".to_string()))
     }
 
+    //noinspection SpellCheckingInspection
     pub fn debug_key(&self) -> Result<Key, NdkError> {
         let path = self.android_user_home()?.join("debug.keystore");
         let password = DEFAULT_DEV_KEYSTORE_PASSWORD.to_owned();
@@ -453,6 +455,7 @@ impl Ndk {
         Err(NdkError::PlatformNotFound(min_sdk_version))
     }
 
+    //noinspection SpellCheckingInspection
     pub fn detect_abi(&self, device_serial: Option<&str>) -> Result<Target, NdkError> {
         let mut adb = self.adb(device_serial)?;
 

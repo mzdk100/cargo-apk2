@@ -1,21 +1,27 @@
 [package]
 name = "ndk-examples"
-version = "0.1.0"
+version.workspace = true
 authors = [
     "SmileSky <mzdk100@foxmail.com>",
     "David Craven <david@craven.ch>"
 ]
-edition = "2021"
+edition.workspace = true
 publish = false
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.21.1"
-libc = "0.2"
-log = "0.4.14"
-ndk = { version = "0.7", features = ["api-level-23"] }
+libc = "0.2.162"
+log = "0.4.22"
 ndk-context = "0.1.1"
-android_logger = "0.11.0"
-android-activity = { version = "0.4", features = ["native-activity"] }
+android_logger = "0.14.1"
+
+[target.'cfg(target_os = "android")'.dependencies.android-activity]
+version = "0.6.0"
+features = ["native-activity"]
+
+[target.'cfg(target_os = "android")'.dependencies.ndk]
+version = "0.9.0"
+features = ["api-level-24"]
 
 [[example]]
 name = "hello_world"
@@ -28,6 +34,9 @@ crate-type = ["cdylib"]
 [[example]]
 name = "looper"
 crate-type = ["cdylib"]
+
+[package.metadata.android]
+use_aapt2 = true
 
 [package.metadata.android.sdk]
 min_sdk_version = 24

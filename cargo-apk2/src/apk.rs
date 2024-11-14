@@ -12,7 +12,7 @@ use ndk_build2::{
     ndk::{Key, Ndk},
     target::Target,
 };
-use std::path::PathBuf;
+use std::{env::var_os, path::PathBuf};
 
 pub struct ApkBuilder<'a> {
     cmd: &'a Subcommand,
@@ -77,7 +77,7 @@ impl<'a> ApkBuilder<'a> {
         };
         let version_code = VersionCode::from_semver(&package_version)?.to_code(1);
 
-        // Set default Android manifest values
+        // 设置默认 Android 清单值
         if manifest
             .android_manifest
             .version_name
@@ -123,8 +123,7 @@ impl<'a> ApkBuilder<'a> {
             });
         }
 
-        // Export the sole Rust activity on Android S and up, if the user didn't explicitly do so.
-        // Without this, apps won't start on S+.
+        // 如果用户未明确执行此操作，则在 Android S 及更高版本上导出 Activity。如果没有此操作，应用将无法在 S+ 上启动。
         // https://developer.android.com/about/versions/12/behavior-changes-12#exported
         if target_sdk_version >= 31 {
             activity.exported.get_or_insert(true);
@@ -162,7 +161,7 @@ impl<'a> ApkBuilder<'a> {
     }
 
     pub fn build(&self, artifact: &Artifact) -> Result<Apk, Error> {
-        // Set artifact specific manifest default values.
+        // 设置工件特定的清单默认值。
         let mut manifest = self.manifest.android_manifest.clone();
 
         if manifest.package.is_empty() {
@@ -207,11 +206,13 @@ impl<'a> ApkBuilder<'a> {
             .apk_name
             .clone()
             .unwrap_or_else(|| artifact.name.to_string());
+        let use_aapt2 = self.manifest.use_aapt2.unwrap_or(true);
 
         let config = ApkConfig {
             ndk: self.ndk.clone(),
             build_dir: self.build_dir.join(artifact.build_dir()),
             apk_name,
+            use_aapt2,
             assets,
             resources,
             manifest,
@@ -270,7 +271,7 @@ impl<'a> ApkBuilder<'a> {
         );
         let password_env = format!("{}_PASSWORD", keystore_env);
 
-        let path = std::env::var_os(&keystore_env).map(PathBuf::from);
+        let path = var_os(&keystore_env).map(PathBuf::from);
         let password = std::env::var(&password_env).ok();
 
         let signing_key = match (path, password) {
