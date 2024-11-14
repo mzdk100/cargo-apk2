@@ -3,19 +3,19 @@ name: Publish
 on:
   push:
     branches: [main]
-    paths: "**/Cargo.toml"
+    paths: ["**/Cargo.toml"]
 
 jobs:
   Publish:
-    if: github.repository_owner == 'rust-mobile'
+    if: github.repository_owner == 'mzdk100'
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 1 # ensure crate order
       fail-fast: false
       matrix:
         crate:
-          - { name: "ndk-build", target: "x86_64-unknown-linux-gnu" }
-          - { name: "cargo-apk", target: "x86_64-unknown-linux-gnu" }
+          - { name: "ndk-build2", target: "x86_64-unknown-linux-gnu" }
+          - { name: "cargo-apk2", target: "x86_64-unknown-linux-gnu" }
     steps:
       - uses: actions/checkout@v4
       - name: Publish ${{ matrix.crate.name }}

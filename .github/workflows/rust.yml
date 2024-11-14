@@ -24,11 +24,11 @@ jobs:
         run: cargo clippy --all --all-targets --all-features --target aarch64-linux-android -- -Dwarnings
 
   check_msrv:
-    name: Check MSRV (1.70.0)
+    name: Check MSRV (1.82.0)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.70.0
+      - uses: dtolnay/rust-toolchain@1.82.0
         with:
           target: aarch64-linux-android
       - name: Check
@@ -66,11 +66,11 @@ jobs:
           rustup default ${{ matrix.rust-channel }}
           rustup target add ${{ matrix.rust-target }}
 
-      - name: Install cargo-apk
-        run: cargo install --path cargo-apk
+      - name: Install cargo-apk2
+        run: cargo install --path cargo-apk2
 
       - name: Cargo apk build for target ${{ matrix.rust-target }}
-        run: cargo apk build -p ndk-examples --target ${{ matrix.rust-target }} --examples
+        run: cargo apk2 build -p ndk-examples --target ${{ matrix.rust-target }} --examples
 
       - uses: actions/upload-artifact@v3
         # Only need this for CI, unless users are interested in downloading
@@ -89,7 +89,7 @@ jobs:
       matrix:
         source_os: [ubuntu-latest, windows-latest, local]
     env:
-      api-level: 29
+      api-level: 35
       emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
       arch: x86_64
       # the `googleapis` emulator target is considerably slower on CI.
@@ -107,10 +107,10 @@ jobs:
         with:
           name: hello_world_${{ matrix.source_os }}_x86_64-linux-android
 
-      - name: Install `cargo-apk` and add `x86_64-linux-android` target
+      - name: Install `cargo-apk2` and add `x86_64-linux-android` target
         if: ${{ matrix.source_os == 'local' }}
         run: |
-          cargo install --path cargo-apk
+          cargo install --path cargo-apk2
           rustup target add x86_64-linux-android
 
       - name: AVD cache
@@ -173,11 +173,11 @@ jobs:
           rustup toolchain install ${{ matrix.rust-channel }}
           rustup default ${{ matrix.rust-channel }}
 
-      - name: Test ndk-build
-        run: cargo test -p ndk-build --all-features
+      - name: Test ndk-build2
+        run: cargo test -p ndk-build2 --all-features
 
-      - name: Test cargo-apk
-        run: cargo test -p cargo-apk --all-features
+      - name: Test cargo-apk2
+        run: cargo test -p cargo-apk2 --all-features
 
   docs:
     strategy:

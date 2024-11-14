@@ -36,6 +36,9 @@
 
 ```toml
 [package.metadata.android]
+# 使用aapt2构建工具来编译资源
+use_aapt2 = true
+
 # 指定清单的包属性。
 package = "com.foo.bar"
 
