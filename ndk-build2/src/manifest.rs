@@ -194,7 +194,7 @@ pub struct IntentFilter {
     #[serde(default)]
     pub actions: Vec<String>,
     /// 序列化为结构向量以实现正确的 xml 格式
-    #[serde(serialize_with = "serialize_catergories")]
+    #[serde(serialize_with = "serialize_categories")]
     #[serde(rename(serialize = "category"))]
     #[serde(default)]
     pub categories: Vec<String>,
@@ -222,7 +222,7 @@ where
     seq.end()
 }
 
-fn serialize_catergories<S>(categories: &[String], serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_categories<S>(categories: &[String], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -271,30 +271,39 @@ pub struct MetaData {
     pub value: String,
 }
 
+//noinspection SpellCheckingInspection
 /// Android [uses-feature 元素](https://developer.android.com/guide/topics/manifest/uses-feature-element).
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Feature {
-    #[serde(rename(serialize = "@android:name"))]
+    #[serde(
+        rename(serialize = "@android:name"),
+        skip_serializing_if = "Option::is_none"
+    )]
     pub name: Option<String>,
-    #[serde(rename(serialize = "@android:required"))]
+    #[serde(
+        rename(serialize = "@android:required"),
+        skip_serializing_if = "Option::is_none"
+    )]
     pub required: Option<bool>,
-    /// The `version` field is currently used for the following features:
+    /// `version` 字段当前用于以下功能：
     ///
-    /// - `name="android.hardware.vulkan.compute"`: The minimum level of compute features required. See the [Android documentation](https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_VULKAN_HARDWARE_COMPUTE)
-    ///   for available levels and the respective Vulkan features required/provided.
-    ///
-    /// - `name="android.hardware.vulkan.level"`: The minimum Vulkan requirements. See the [Android documentation](https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_VULKAN_HARDWARE_LEVEL)
-    ///   for available levels and the respective Vulkan features required/provided.
-    ///
-    /// - `name="android.hardware.vulkan.version"`: Represents the value of Vulkan's `VkPhysicalDeviceProperties::apiVersion`. See the [Android documentation](https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_VULKAN_HARDWARE_VERSION)
-    ///    for available levels and the respective Vulkan features required/provided.
-    #[serde(rename(serialize = "@android:version"))]
+    /// - `name="android.hardware.vulkan.compute"`: 所需的最低计算功能级别。请参阅 [Android 文档](https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_VULKAN_HARDWARE_COMPUTE)，了解可用级别以及所需/提供的相应 Vulkan 功能。
+    /// - `name="android.hardware.vulkan.level"`: Vulkan 的最低要求。请参阅 [Android 文档](https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_VULKAN_HARDWARE_LEVEL)了解可用级别以及所需/提供的相应 Vulkan 功能。
+    /// - `name="android.hardware.vulkan.version"`: 表示 Vulkan 的 `VkPhysicalDeviceProperties::apiVersion` 的值。请参阅 [Android 文档](https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_VULKAN_HARDWARE_VERSION)以了解可用级别以及所需/提供的相应 Vulkan 功能。
+    #[serde(
+        rename(serialize = "@android:version"),
+        skip_serializing_if = "Option::is_none"
+    )]
     pub version: Option<u32>,
-    #[serde(rename(serialize = "@android:glEsVersion"))]
+    #[serde(
+        rename(serialize = "@android:glEsVersion"),
+        skip_serializing_if = "Option::is_none"
+    )]
     #[serde(serialize_with = "serialize_opengles_version")]
     pub opengles_version: Option<(u8, u8)>,
 }
 
+//noinspection SpellCheckingInspection
 fn serialize_opengles_version<S>(
     version: &Option<(u8, u8)>,
     serializer: S,
@@ -382,6 +391,7 @@ impl Default for Sdk {
     }
 }
 
+//noinspection HttpUrlsUsage
 fn default_namespace() -> String {
     "http://schemas.android.com/apk/res/android".to_string()
 }

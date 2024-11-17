@@ -1,5 +1,5 @@
 [workspace.package]
-version = "1.0.2"
+version = "1.0.3"
 authors = [
     "SmileSky <mzdk100@foxmail.com>",
     "The Rust Windowing contributors",
@@ -12,7 +12,7 @@ rust-version = "1.82.0"
 
 [workspace.dependencies]
 dunce = "1.0.5"
-serde = "1.0.214"
+serde = "1.0.215"
 thiserror = "2.0.3"
 
 [workspace]
