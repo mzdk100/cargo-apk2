@@ -2,7 +2,7 @@
 
 [![Actions Status](https://github.com/mzdk100/cargo-apk2/actions/workflows/rust.yml/badge.svg)](https://github.com/mzdk100/cargo-apk2/actions)
 [![最新版本](https://img.shields.io/crates/v/cargo-apk.svg?logo=rust)](https://crates.io/crates/cargo-apk2)
-[![MSRV](https://img.shields.io/badge/rustc-1.82.0+-ab6000.svg)](https://blog.rust-lang.org/2024/10/17/Rust-1.82.0.html)
+[![MSRV](https://img.shields.io/badge/rustc-1.86.0+-ab6000.svg)](https://blog.rust-lang.org/2025/04/03/Rust-1.86.0/)
 [![文档](https://docs.rs/cargo-apk2/badge.svg)](https://docs.rs/cargo-apk2)
 [![仓库](https://tokei.rs/b1/github/rust-mobile/cargo-apk)](https://github.com/mzdk100/cargo-apk2)
 ![MIT](https://img.shields.io/badge/License-MIT-green.svg)

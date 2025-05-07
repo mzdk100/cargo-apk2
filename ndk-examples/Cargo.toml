@@ -1,19 +1,16 @@
 [package]
 name = "ndk-examples"
 version.workspace = true
-authors = [
-    "SmileSky <mzdk100@foxmail.com>",
-    "David Craven <david@craven.ch>"
-]
+authors.workspace = true
 edition.workspace = true
 publish = false
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.21.1"
-libc = "0.2.162"
-log = "0.4.22"
+libc = "1.0.0-alpha.1"
+log = "0.4.27"
 ndk-context = "0.1.1"
-android_logger = "0.14.1"
+android_logger = "0.15.0"
 
 [target.'cfg(target_os = "android")'.dependencies.android-activity]
 version = "0.6.0"

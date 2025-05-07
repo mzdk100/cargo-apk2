@@ -17,7 +17,7 @@ const U32_SIZE: usize = size_of::<u32>();
 use android_activity::{AndroidApp, InputStatus, MainEvent, PollEvent};
 use android_logger::{init_once, Config};
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn android_main(app: AndroidApp) {
     init_once(Config::default().with_max_level(LevelFilter::Info));
 

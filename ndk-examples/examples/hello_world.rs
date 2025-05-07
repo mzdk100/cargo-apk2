@@ -3,7 +3,7 @@ use android_logger::{init_once, Config};
 use log::{info, LevelFilter};
 use ndk::trace;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn android_main(_app: AndroidApp) {
     init_once(Config::default().with_max_level(LevelFilter::Info));
 

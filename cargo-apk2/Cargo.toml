@@ -10,19 +10,19 @@ repository.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-anyhow = "1.0.93"
+anyhow = "1.0.98"
 cargo-subcommand = "0.12.0"
 dunce.workspace = true
-env_logger = "0.11.5"
-log = "0.4.22"
+env_logger = "0.11.8"
+log = "0.4.27"
 serde.workspace = true
 thiserror.workspace = true
-toml = "0.8.19"
+toml = "0.8.22"
 
 [dependencies.ndk-build2]
 path = "../ndk-build2"
-version = "1.0.3"
+version = "1.0.4"
 
 [dependencies.clap]
-version = "4.5.20"
+version = "4.5.37"
 features = ["derive"]
