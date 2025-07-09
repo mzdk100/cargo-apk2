@@ -6,18 +6,18 @@ edition.workspace = true
 publish = false
 
 [target.'cfg(target_os = "android")'.dependencies]
-jni = "0.21.1"
-libc = "1.0.0-alpha.1"
-log = "0.4.27"
-ndk-context = "0.1.1"
-android_logger = "0.15.0"
+jni.workspace = true
+libc.workspace = true
+log.workspace = true
+ndk-context.workspace = true
+android_logger.workspace = true
 
 [target.'cfg(target_os = "android")'.dependencies.android-activity]
-version = "0.6.0"
+workspace = true
 features = ["native-activity"]
 
 [target.'cfg(target_os = "android")'.dependencies.ndk]
-version = "0.9.0"
+workspace = true
 features = ["api-level-24"]
 
 [[example]]
@@ -37,4 +37,4 @@ use_aapt2 = true
 
 [package.metadata.android.sdk]
 min_sdk_version = 24
-target_sdk_version = 35
+target_sdk_version = 36

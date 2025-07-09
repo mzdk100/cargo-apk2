@@ -53,6 +53,10 @@ resources = "path/to/resources_folder"
 # 如果未指定，资产将不会包含在APK中。
 assets = "path/to/assets_folder"
 
+# Java源代码的文件夹路径。
+# 如果未指定，则会跳过Java编译步骤。
+java_sources = "path/to/java"
+
 # 最终APK文件的名称。默认为包名。
 apk_name = "myapp"
 
@@ -93,11 +97,11 @@ keystore_password = "android"
 
 # 参见 https://developer.android.com/guide/topics/manifest/uses-sdk-element
 #
-# 默认的`min_sdk_version`为24，`target_sdk_version`为35（如果检测到的NDK不支持，则为较低的版本）。
+# 默认的`min_sdk_version`为24，`target_sdk_version`为36（如果检测到的NDK不支持，则为较低的版本）。
 [package.metadata.android.sdk]
 min_sdk_version = 24
-target_sdk_version = 35
-max_sdk_version = 35
+target_sdk_version = 36
+max_sdk_version = 36
 
 # 参见 https://developer.android.com/guide/topics/manifest/uses-feature-element
 #
@@ -112,7 +116,7 @@ version = 1
 # 注意：可以有多个.uses_permission条目。
 [[package.metadata.android.uses_permission]]
 name = "android.permission.WRITE_EXTERNAL_STORAGE"
-max_sdk_version = 35
+max_sdk_version = 36
 
 # 参见 https://developer.android.com/guide/topics/manifest/queries-element#provider
 [[package.metadata.android.queries.provider]]

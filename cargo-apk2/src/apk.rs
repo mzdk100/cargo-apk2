@@ -1,24 +1,34 @@
-use crate::{
-    error::Error,
-    manifest::{Inheritable, Manifest, Root},
+use {
+    crate::{
+        error::Error,
+        manifest::{Inheritable, Manifest, Root},
+    },
+    cargo_subcommand::{Artifact, ArtifactType, CrateType, Profile, Subcommand},
+    ndk_build2::{
+        apk::{Apk, ApkConfig},
+        cargo::{VersionCode, cargo_ndk},
+        dylibs::get_libs_search_paths,
+        error::NdkError,
+        manifest::{IntentFilter, MetaData},
+        ndk::{Key, Ndk},
+        target::Target,
+    },
+    std::{
+        env::var_os,
+        ffi::OsStr,
+        fs::{create_dir_all, read_dir, remove_dir_all},
+        path::{Path, PathBuf},
+        process::Command,
+    },
 };
-use cargo_subcommand::{Artifact, ArtifactType, CrateType, Profile, Subcommand};
-use ndk_build2::{
-    apk::{Apk, ApkConfig},
-    cargo::{cargo_ndk, VersionCode},
-    dylibs::get_libs_search_paths,
-    error::NdkError,
-    manifest::{IntentFilter, MetaData},
-    ndk::{Key, Ndk},
-    target::Target,
-};
-use std::{env::var_os, path::PathBuf};
 
 pub struct ApkBuilder<'a> {
     cmd: &'a Subcommand,
     ndk: Ndk,
+    java_home: PathBuf,
     manifest: Manifest,
     build_dir: PathBuf,
+    classes_dir: PathBuf,
     build_targets: Vec<Target>,
     device_serial: Option<String>,
 }
@@ -34,6 +44,7 @@ impl<'a> ApkBuilder<'a> {
             cmd.manifest().display()
         );
         let ndk = Ndk::from_env()?;
+        let java_home = android_build::java_home().ok_or(Error::JdkNotFound)?;
         let mut manifest = Manifest::parse_from_toml(cmd.manifest())?;
         let workspace_manifest: Option<Root> = cmd
             .workspace_manifest()
@@ -44,13 +55,15 @@ impl<'a> ApkBuilder<'a> {
         } else if !manifest.build_targets.is_empty() {
             manifest.build_targets.clone()
         } else {
-            vec![ndk
-                .detect_abi(device_serial.as_deref())
-                .unwrap_or(Target::Arm64V8a)]
+            vec![
+                ndk.detect_abi(device_serial.as_deref())
+                    .unwrap_or(Target::Arm64V8a),
+            ]
         };
         let build_dir = dunce::simplified(cmd.target_dir())
             .join(cmd.profile())
             .join("apk");
+        let classes_dir = build_dir.join("classes");
 
         let package_version = match &manifest.version {
             Inheritable::Value(v) => v.clone(),
@@ -132,8 +145,10 @@ impl<'a> ApkBuilder<'a> {
         Ok(Self {
             cmd,
             ndk,
+            java_home,
             manifest,
             build_dir,
+            classes_dir,
             build_targets,
             device_serial,
         })
@@ -157,6 +172,78 @@ impl<'a> ApkBuilder<'a> {
                 return Err(NdkError::CmdFailed(cargo).into());
             }
         }
+
+        Ok(())
+    }
+
+    pub fn compile_java_sources(&self, java_sources: Option<PathBuf>) -> Result<(), Error> {
+        let java_sources = match java_sources {
+            Some(p) => p,
+            None => return Ok(()),
+        };
+
+        if !java_sources.exists() {
+            return Err(Error::PathNotFound(java_sources));
+        }
+
+        println!("Compiling Java sources...");
+
+        // 创建临时目录用于编译
+        let _ = remove_dir_all(&self.classes_dir); // 清理旧的编译结果
+        create_dir_all(&self.classes_dir)?;
+
+        // 获取Android SDK中的android.jar路径
+        let target_sdk_version = self
+            .manifest
+            .android_manifest
+            .sdk
+            .target_sdk_version
+            .unwrap_or_else(|| self.ndk.default_target_platform());
+        let android_jar = self.ndk.android_jar(target_sdk_version)?;
+
+        // 使用javac编译Java源文件
+        let mut javac = Command::new(self.java_home.join("bin").join("javac"));
+        javac
+            .arg("-d")
+            .arg(&self.classes_dir)
+            .arg("-classpath")
+            .arg(&android_jar);
+
+        // 添加所有Java源文件
+        let mut has_java_files = false;
+
+        // 递归收集所有Java源文件
+        fn collect_java_files(
+            dir: &Path,
+            javac: &mut Command,
+            has_files: &mut bool,
+        ) -> Result<(), NdkError> {
+            for entry in read_dir(dir).map_err(|e| NdkError::IoPathError(dir.to_path_buf(), e))? {
+                let entry = entry?;
+                let path = entry.path();
+
+                if path.is_dir() {
+                    collect_java_files(&path, javac, has_files)?;
+                } else if path.extension() == Some(OsStr::new("java")) {
+                    javac.arg(&path);
+                    *has_files = true;
+                }
+            }
+
+            Ok(())
+        }
+
+        collect_java_files(&java_sources, &mut javac, &mut has_java_files)?;
+
+        if !has_java_files {
+            println!("No Java source files found in {:?}", java_sources);
+            return Ok(());
+        }
+
+        if !javac.status()?.success() {
+            return Err(Error::CmdFailed(javac));
+        }
+
         Ok(())
     }
 
@@ -196,6 +283,11 @@ impl<'a> ApkBuilder<'a> {
             .resources
             .as_ref()
             .map(|res| dunce::simplified(&crate_path.join(res)).to_owned());
+        let java_sources = self
+            .manifest
+            .java_sources
+            .as_ref()
+            .map(|src| dunce::simplified(&crate_path.join(src)).to_owned());
         let runtime_libs = self
             .manifest
             .runtime_libs
@@ -207,6 +299,7 @@ impl<'a> ApkBuilder<'a> {
             .clone()
             .unwrap_or_else(|| artifact.name.to_string());
         let use_aapt2 = self.manifest.use_aapt2.unwrap_or(true);
+        self.compile_java_sources(java_sources)?;
 
         let config = ApkConfig {
             ndk: self.ndk.clone(),
@@ -215,6 +308,7 @@ impl<'a> ApkBuilder<'a> {
             use_aapt2,
             assets,
             resources,
+            java_classes: self.classes_dir.clone(),
             manifest,
             disable_aapt_compression: is_debug_profile,
             strip: self.manifest.strip,
@@ -287,7 +381,12 @@ impl<'a> ApkBuilder<'a> {
                 }
             }
             (Some(path), None) => {
-                eprintln!("`{}` was specified via `{}`, but `{}` was not specified, both or neither must be present for profiles other than `dev`", path.display(), keystore_env, password_env);
+                eprintln!(
+                    "`{}` was specified via `{}`, but `{}` was not specified, both or neither must be present for profiles other than `dev`",
+                    path.display(),
+                    keystore_env,
+                    password_env
+                );
                 return Err(Error::MissingReleaseKey(profile_name.to_owned()));
             }
             (None, _) => {
@@ -304,6 +403,12 @@ impl<'a> ApkBuilder<'a> {
             }
         };
 
+        // 添加Java类
+        let res = apk.add_java_classes();
+        if self.classes_dir.exists() {
+            remove_dir_all(&self.classes_dir)?;
+        }
+        res?;
         let unsigned = apk.add_pending_libs_and_align()?;
 
         println!(

@@ -1,17 +1,29 @@
-use cargo_subcommand::Error as SubcommandError;
-use ndk_build2::error::NdkError;
-use std::io::Error as IoError;
-use thiserror::Error;
-use toml::de::Error as TomlError;
+use {
+    cargo_subcommand::Error as SubcommandError,
+    ndk_build2::error::NdkError,
+    std::{io::Error as IoError, path::PathBuf, process::Command},
+    thiserror::Error,
+    toml::de::Error as TomlError,
+};
 
 #[derive(Debug, Error)]
 pub enum Error {
     #[error(transparent)]
     Subcommand(#[from] SubcommandError),
+    #[error("Command `{}` had a non-zero exit code.", format!("{:?}", .0).replace('"', ""))]
+    CmdFailed(Command),
     #[error("Failed to parse config.")]
     Config(#[from] TomlError),
     #[error(transparent)]
     Ndk(#[from] NdkError),
+    #[error(
+        "Java Development Kit is not found. \
+    Please set the path to the JDK with the $JAVA_HOME \
+    environment variable."
+    )]
+    JdkNotFound,
+    #[error("Path `{0:?}` doesn't exist.")]
+    PathNotFound(PathBuf),
     #[error(transparent)]
     Io(#[from] IoError),
     #[error("Configure a release keystore via `[package.metadata.android.signing.{0}]`")]

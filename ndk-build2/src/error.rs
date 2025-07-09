@@ -1,8 +1,9 @@
-use std::io::Error as IoError;
-use std::num::ParseIntError;
-use std::path::PathBuf;
-use std::process::Command;
-use thiserror::Error;
+use {
+    std::{
+        io::Error as IoError, num::ParseIntError, path::PathBuf, process::Command, str::Utf8Error,
+    },
+    thiserror::Error,
+};
 
 #[derive(Debug, Error)]
 pub enum NdkError {
@@ -18,7 +19,9 @@ pub enum NdkError {
         environment variable."
     )]
     NdkNotFound,
-    #[error("GNU toolchain binary `{gnu_bin}` nor LLVM toolchain binary `{llvm_bin}` found in `{toolchain_path:?}`.")]
+    #[error(
+        "GNU toolchain binary `{gnu_bin}` nor LLVM toolchain binary `{llvm_bin}` found in `{toolchain_path:?}`."
+    )]
     ToolchainBinaryNotFound {
         toolchain_path: PathBuf,
         gnu_bin: String,
@@ -54,4 +57,8 @@ pub enum NdkError {
     PackageNotInOutput { package: String, output: String },
     #[error("Could not find `uid:` in output `{0}`")]
     UidNotInOutput(String),
+    #[error(transparent)]
+    Utf8(#[from] Utf8Error),
+    #[error(transparent)]
+    ParseInt(#[from] ParseIntError),
 }

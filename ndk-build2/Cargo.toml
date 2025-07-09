@@ -10,16 +10,16 @@ repository.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-android-build = "0.1.2"
-dirs = "6.0.0"
+android-build.workspace = true
+dirs.workspace = true
 dunce.workspace = true
 thiserror.workspace = true
-which = "7.0.3"
+which.workspace = true
 
 [dependencies.serde]
 workspace = true
 features = ["derive"]
 
 [dependencies.quick-xml]
-version = "0.37.5"
+workspace = true
 features = ["serialize"]

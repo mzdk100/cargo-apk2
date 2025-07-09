@@ -23,6 +23,7 @@ pub(crate) struct Manifest {
     pub(crate) build_targets: Vec<Target>,
     pub(crate) assets: Option<PathBuf>,
     pub(crate) resources: Option<PathBuf>,
+    pub(crate) java_sources: Option<PathBuf>,
     pub(crate) runtime_libs: Option<PathBuf>,
     /// 将配置文件映射到密钥库
     pub(crate) signing: HashMap<String, Signing>,
@@ -51,6 +52,7 @@ impl Manifest {
             build_targets: metadata.build_targets,
             assets: metadata.assets,
             resources: metadata.resources,
+            java_sources: metadata.java_sources,
             runtime_libs: metadata.runtime_libs,
             signing: metadata.signing,
             reverse_port_forward: metadata.reverse_port_forward,
@@ -106,6 +108,8 @@ struct AndroidMetadata {
     build_targets: Vec<Target>,
     assets: Option<PathBuf>,
     resources: Option<PathBuf>,
+    /// Java源文件的路径
+    java_sources: Option<PathBuf>,
     runtime_libs: Option<PathBuf>,
     /// Maps profiles to keystores
     #[serde(default)]

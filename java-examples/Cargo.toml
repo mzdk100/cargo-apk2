@@ -1,0 +1,21 @@
+[package]
+name = "example-app"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+jni.workspace = true
+
+[package.metadata.android]
+use_aapt2 = true
+package = "com.example.app"
+apk_name = "ExampleApp"
+label = "Example App"
+java_sources = "src/java"
+
+[package.metadata.android.sdk]
+min_sdk_version = 24
+target_sdk_version = 36

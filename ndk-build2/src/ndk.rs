@@ -1,10 +1,12 @@
-use crate::{error::NdkError, target::Target};
-use std::{
-    collections::HashMap,
-    env::var,
-    fs::read_dir,
-    path::{Path, PathBuf},
-    process::Command,
+use {
+    crate::{error::NdkError, target::Target},
+    std::{
+        collections::HashMap,
+        env::var,
+        fs::{create_dir_all, read_dir, read_to_string},
+        path::{Path, PathBuf},
+        process::Command,
+    },
 };
 
 /// 通过 [`Ndk::debug_key`] 创建默认 `debug.keystore` 时使用的默认密码
@@ -44,8 +46,7 @@ impl Ndk {
                 .or_else(|| dirs::home_dir().map(|home| home.join(".android")))
                 .ok_or_else(|| NdkError::PathNotFound(PathBuf::from("$HOME")))?
         };
-        let sdk_path =
-            android_build::android_sdk().map_or(Err(NdkError::SdkNotFound), |i| Ok(i))?;
+        let sdk_path = android_build::android_sdk().ok_or(NdkError::SdkNotFound)?;
 
         let ndk_path = {
             let ndk_path = var("ANDROID_NDK_ROOT")
@@ -72,7 +73,7 @@ impl Ndk {
             .max()
             .ok_or(NdkError::BuildToolsNotFound)?;
 
-        let build_tag = std::fs::read_to_string(ndk_path.join("source.properties"))
+        let build_tag = read_to_string(ndk_path.join("source.properties"))
             .expect("Failed to read source.properties");
 
         let build_tag = build_tag
@@ -96,18 +97,14 @@ impl Ndk {
             })
             .expect("No `Pkg.Revision` in source.properties");
 
-        let ndk_platforms = std::fs::read_to_string(ndk_path.join("build/core/platforms.mk"))?;
+        let ndk_platforms = read_to_string(ndk_path.join("build/core/platforms.mk"))?;
         let ndk_platforms = ndk_platforms
             .split('\n')
             .map(|s| s.split_once(" := ").unwrap())
             .collect::<HashMap<_, _>>();
 
-        let min_platform_level = ndk_platforms["NDK_MIN_PLATFORM_LEVEL"]
-            .parse::<u32>()
-            .unwrap();
-        let max_platform_level = ndk_platforms["NDK_MAX_PLATFORM_LEVEL"]
-            .parse::<u32>()
-            .unwrap();
+        let min_platform_level = ndk_platforms["NDK_MIN_PLATFORM_LEVEL"].parse::<u32>()?;
+        let max_platform_level = ndk_platforms["NDK_MAX_PLATFORM_LEVEL"].parse::<u32>()?;
 
         let platforms_dir = sdk_path.join("platforms");
         let platforms: Vec<u32> = read_dir(&platforms_dir)
@@ -189,11 +186,11 @@ impl Ndk {
         self.platforms().iter().max().cloned().unwrap()
     }
 
-    /// 返回当前 [Google Play 所要求的] 平台“35”或更低版本（如果检测到的 SDK 尚不支持）。
+    /// 返回当前 [Google Play 所要求的] 平台“36”或更低版本（如果检测到的 SDK 尚不支持）。
     ///
     /// [Google Play 要求]: https://developer.android.com/distribute/best-practices/develop/target-sdk
     pub fn default_target_platform(&self) -> u32 {
-        self.highest_supported_platform().min(35)
+        self.highest_supported_platform().min(36)
     }
 
     pub fn platform_dir(&self, platform: u32) -> Result<PathBuf, NdkError> {
@@ -339,7 +336,7 @@ impl Ndk {
     ) -> Result<(), NdkError> {
         let abi = self.detect_abi(device_serial)?;
         let jni_dir = launch_dir.as_ref().join("jni");
-        std::fs::create_dir_all(&jni_dir)?;
+        create_dir_all(&jni_dir)?;
         std::fs::write(
             jni_dir.join("Android.mk"),
             format!("APP_ABI={}\nTARGET_OUT=\n", abi.android_abi()),
@@ -362,7 +359,7 @@ impl Ndk {
 
     pub fn android_user_home(&self) -> Result<PathBuf, NdkError> {
         let android_user_home = self.user_home.clone();
-        std::fs::create_dir_all(&android_user_home)?;
+        create_dir_all(&android_user_home)?;
         Ok(android_user_home)
     }
 

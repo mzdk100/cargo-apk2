@@ -1,16 +1,20 @@
-use crate::{
-    error::NdkError,
-    manifest::AndroidManifest,
-    ndk::{Key, Ndk},
-    target::Target,
-};
-use serde::Serialize;
-use std::{
-    collections::{HashMap, HashSet},
-    ffi::OsStr,
-    fs::{copy, create_dir_all, read_dir, remove_file, rename},
-    path::{Path, PathBuf},
-    process::Command,
+use {
+    crate::{
+        error::NdkError,
+        manifest::AndroidManifest,
+        ndk::{Key, Ndk},
+        target::Target,
+    },
+    serde::{Deserialize, Serialize},
+    std::{
+        collections::{HashMap, HashSet},
+        ffi::OsStr,
+        fs::{copy, create_dir_all, read_dir, remove_file, rename},
+        io::{Error as IoError, ErrorKind},
+        path::{Path, PathBuf},
+        process::Command,
+        str::from_utf8,
+    },
 };
 
 //noinspection SpellCheckingInspection
@@ -20,7 +24,7 @@ use std::{
 /// [`strip`](https://doc.rust-lang.org/cargo/reference/profiles.html#strip)
 /// 或 [`split-debuginfo`](https://doc.rust-lang.org/cargo/reference/profiles.html#split-debuginfo)
 /// 可能会导致调试符号不存在于 `.so` 中，从而导致这些选项不执行任何操作。
-#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, serde::Deserialize, Serialize)]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StripConfig {
     /// 不对调试符号进行特殊处理
@@ -39,6 +43,7 @@ pub struct ApkConfig {
     pub use_aapt2: bool,
     pub assets: Option<PathBuf>,
     pub resources: Option<PathBuf>,
+    pub java_classes: PathBuf,
     pub manifest: AndroidManifest,
     pub disable_aapt_compression: bool,
     pub strip: StripConfig,
@@ -192,6 +197,82 @@ pub struct UnalignedApk<'a> {
 impl<'a> UnalignedApk<'a> {
     pub fn config(&self) -> &ApkConfig {
         self.config
+    }
+
+    /// 将classes文件添加到APK中
+    pub fn add_java_classes(&mut self) -> Result<(), NdkError> {
+        // 递归收集所有class文件
+        fn collect_class_files(dir: &Path, cmd: &mut Command) -> Result<(), NdkError> {
+            for entry in read_dir(dir).map_err(|e| NdkError::IoPathError(dir.to_path_buf(), e))? {
+                let entry = entry?;
+                let path = entry.path();
+
+                if path.is_dir() {
+                    collect_class_files(&path, cmd)?;
+                } else if path.extension() == Some(OsStr::new("class")) {
+                    cmd.arg(&path);
+                }
+            }
+
+            Ok(())
+        }
+
+        if !self.config.java_classes.exists() {
+            return Ok(());
+        }
+
+        // 尝试使用d8工具（Android SDK新版本）
+        let target_sdk_version = self
+            .config
+            .manifest
+            .sdk
+            .target_sdk_version
+            .unwrap_or_else(|| self.config.ndk.default_target_platform());
+        let mut d8 = self
+            .config()
+            .build_tool(if cfg!(windows) { "d8.bat" } else { "d8" })?;
+        d8.arg("--output")
+            .arg(&self.config.build_dir)
+            .arg("--lib")
+            .arg(&self.config.ndk.android_jar(target_sdk_version)?);
+        collect_class_files(&self.config.java_classes, &mut d8)?;
+
+        let dex_file = self.config.build_dir.join("classes.dex");
+        let d8_result = d8.status();
+        let success = match d8_result {
+            Ok(status) => status.success(),
+            Err(_) => {
+                // 如果d8不可用，尝试使用dx工具（旧版本）
+                println!("d8 not found, trying dx...");
+                let mut dx = Command::new("dx");
+                dx.arg("--dex")
+                    .arg("--output")
+                    .arg(&dex_file)
+                    .arg(&self.config.java_classes);
+
+                dx.status()?.success()
+            }
+        };
+
+        if !success {
+            return Err(
+                IoError::new(ErrorKind::Other, "Failed to convert class files to dex").into(),
+            );
+        }
+
+        // 将classes.dex文件添加到APK中
+        if dex_file.exists() {
+            let mut aapt = self.config.build_tool(bin!("aapt"))?;
+            aapt.arg("add")
+                .arg(self.config.unaligned_apk())
+                .arg("classes.dex");
+
+            if !aapt.status()?.success() {
+                return Err(NdkError::CmdFailed(aapt));
+            }
+        }
+
+        Ok(())
     }
 
     pub fn add_lib(&mut self, path: &Path, target: Target) -> Result<(), NdkError> {
@@ -400,7 +481,7 @@ impl Apk {
             return Err(NdkError::CmdFailed(adb));
         }
 
-        let output = std::str::from_utf8(&output.stdout).unwrap();
+        let output = from_utf8(&output.stdout)?;
         let (_package, uid) = output
             .lines()
             .filter_map(|line| line.split_once(' '))
