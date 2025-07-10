@@ -174,8 +174,9 @@ uses_cleartext_traffic = true
 name = "com.samsung.android.vr.application.mode"
 value = "vr_only"
 
+# 支持多个activity元素（应至少有一个），cargo-apk2默认不会生成任何隐含Activity
 # 参见 https://developer.android.com/guide/topics/manifest/activity-element
-[package.metadata.android.application.activity]
+[[package.metadata.android.application.activity]]
 
 # 参见 https://developer.android.com/guide/topics/manifest/activity-element#config
 #
@@ -212,7 +213,7 @@ always_retain_task_state = true
 
 # 参见 https://developer.android.com/guide/topics/manifest/meta-data-element
 #
-# 注意：可以有多个.meta_data条目。
+# 注意：可以有多个meta_data条目。
 # 注意：当前不支持`resource`属性。
 [[package.metadata.android.application.activity.meta_data]]
 name = "com.oculus.vr.focusaware"
@@ -238,6 +239,28 @@ port = "8080"
 path = "/rust-windowing/android-ndk-rs/tree/master/cargo-apk"
 path_prefix = "/rust-windowing/"
 mime_type = "image/jpeg"
+
+# 支持多个service元素，同样支持intent-filter
+# 参见 https://developer.android.com/guide/topics/manifest/service-element
+[[package.metadata.android.application.service]]
+# 实现服务的 Service 子类的名称。这是一个完全限定的类名称，例如 "com.example.project.RoomService"。不过，作为一种简写形式，如果名称的第一个字符是句点（例如 ".RoomService"），则会将其附加到 <manifest> 元素中指定的软件包名称。
+# 发布应用后，除非您已设置 android:exported="false"，否则请勿更改此名称。没有默认值。必须指定此名称。
+name = ".MyService"
+
+# 确定系统是否可以实例化服务。如果可以实例化，则设为 "true"，否则设为 "false"。默认值为 "true"。
+# <application> 元素具有自己的 enabled 属性，该属性适用于所有应用组件，包括服务。
+# <application> 和 <service> 属性必须都设为 "true"（这正是它们两者的默认设置），才会启用服务。如果其中任一 属性设为 "false"，则表示服务已停用；无法对其进行实例化。
+enabled = true
+
+# 实体启动服务或绑定到服务所需的权限的名称。如果没有向 startService()、bindService() 或 stopService() 的调用方授予此权限，该方法将不起作用，且系统不会将 Intent 对象传送给服务。
+# 如果未设置该属性，则对服务应用由 <application> 元素的 permission 属性所设置的权限。如果二者均未设置，则服务不受权限保护。
+permission = "android.permission.BIND_JOB_SERVICE"
+
+# 运行服务的进程的名称。通常，应用的所有组件都会在为应用创建的默认进程中运行。它与应用软件包的名称相同。
+# <application> 元素的 process 属性可以为所有组件设置不同的默认值。不过，组件可以使用自己的 process 属性替换默认属性，从而允许您跨多个进程分布应用。
+# 如果为此属性分配的名称以英文冒号 (:) 开头，则系统会在需要时创建应用专用的新进程，并且服务会在该进程中运行。
+# 如果进程名称以小写字符开头，则服务将在采用该名称的全局进程中运行，前提是它具有相应权限。这样，不同应用中的组件就可以共享进程，从而减少资源使用量。
+process = ":my_service"
 
 # 通过`adb reverse`设置反向端口转发，这意味着如果Android设备连接到`localhost`上的端口`1338`，
 # 它将被路由到主机上的端口`1338`。源和目标端口可以不同，请参阅`adb`帮助页面以获取可能的配置。

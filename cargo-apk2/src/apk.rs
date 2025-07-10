@@ -9,7 +9,6 @@ use {
         cargo::{VersionCode, cargo_ndk},
         dylibs::get_libs_search_paths,
         error::NdkError,
-        manifest::{IntentFilter, MetaData},
         ndk::{Key, Ndk},
         target::Target,
     },
@@ -121,25 +120,30 @@ impl<'a> ApkBuilder<'a> {
             .debuggable
             .get_or_insert_with(|| *cmd.profile() == Profile::Dev);
 
-        let activity = &mut manifest.android_manifest.application.activity;
-
-        // Add a default `MAIN` action to launch the activity, if the user didn't supply it by hand.
-        if activity
-            .intent_filter
-            .iter()
-            .all(|i| i.actions.iter().all(|f| f != "android.intent.action.MAIN"))
-        {
-            activity.intent_filter.push(IntentFilter {
-                actions: vec!["android.intent.action.MAIN".to_string()],
-                categories: vec!["android.intent.category.LAUNCHER".to_string()],
-                data: vec![],
-            });
+        // 检查是否有Activity定义
+        if manifest.android_manifest.application.activities.is_empty() {
+            eprintln!(
+                "Warning: No activities defined. Please add [[package.metadata.android.application.activity]] configuration in Cargo.toml."
+            );
+            eprintln!("Example:");
+            eprintln!("[[package.metadata.android.application.activity]]");
+            eprintln!("name = \"android.app.NativeActivity\"");
+            eprintln!("[[package.metadata.android.application.activity.meta_data]]");
+            eprintln!("name = \"android.app.lib_name\"");
+            eprintln!("value = \"your_lib_name\"");
         }
 
         // 如果用户未明确执行此操作，则在 Android S 及更高版本上导出 Activity。如果没有此操作，应用将无法在 S+ 上启动。
         // https://developer.android.com/about/versions/12/behavior-changes-12#exported
         if target_sdk_version >= 31 {
-            activity.exported.get_or_insert(true);
+            manifest
+                .android_manifest
+                .application
+                .activities
+                .iter_mut()
+                .for_each(|a| {
+                    a.exported.get_or_insert(true);
+                });
         }
 
         Ok(Self {
@@ -263,11 +267,6 @@ impl<'a> ApkBuilder<'a> {
         if manifest.application.label.is_empty() {
             manifest.application.label = artifact.name.to_string();
         }
-
-        manifest.application.activity.meta_data.push(MetaData {
-            name: "android.app.lib_name".to_string(),
-            value: artifact.name.replace('-', "_"),
-        });
 
         let crate_path = self.cmd.manifest().parent().expect("invalid manifest path");
 
@@ -423,7 +422,17 @@ impl<'a> ApkBuilder<'a> {
         let apk = self.build(artifact)?;
         apk.reverse_port_forwarding(self.device_serial.as_deref())?;
         apk.install(self.device_serial.as_deref())?;
-        apk.start(self.device_serial.as_deref())?;
+        
+        // 查找第一个带有android.intent.action.MAIN的Activity
+        let activity = self.manifest.android_manifest.application.activities.iter()
+            .find(|activity| {
+                activity.intent_filter.iter().any(|filter| {
+                    filter.actions.contains(&"android.intent.action.MAIN".to_string())
+                })
+            })
+            .map(|activity| activity.name.as_str());
+        
+        apk.start(self.device_serial.as_deref(), activity)?;
         let uid = apk.uidof(self.device_serial.as_deref())?;
 
         if !no_logcat {
@@ -450,6 +459,7 @@ impl<'a> ApkBuilder<'a> {
             "android.app.NativeActivity",
             self.device_serial.as_deref(),
         )?;
+
         Ok(())
     }
 

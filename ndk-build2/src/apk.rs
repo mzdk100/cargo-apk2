@@ -329,7 +329,7 @@ impl<'a> UnalignedApk<'a> {
 
         // Pass UNIX path separators to `aapt` on non-UNIX systems, ensuring the resulting separator
         // is compatible with the target device instead of the host platform.
-        // Otherwise, it results in a runtime error when loading the NativeActivity `.so` library.
+        // Otherwise, it results in a runtime error when loading the \NativeActivity `.so` library.
         let lib_path_unix = lib_path.to_str().unwrap().replace('\\', "/");
 
         self.pending_libs.insert(lib_path_unix);
@@ -450,15 +450,19 @@ impl Apk {
         Ok(())
     }
 
-    pub fn start(&self, device_serial: Option<&str>) -> Result<(), NdkError> {
+    pub fn start(&self, device_serial: Option<&str>, activity: Option<&str>) -> Result<(), NdkError> {
         let mut adb = self.ndk.adb(device_serial)?;
         adb.arg("shell")
             .arg("am")
             .arg("start")
             .arg("-a")
             .arg("android.intent.action.MAIN")
-            .arg("-n")
-            .arg(format!("{}/android.app.NativeActivity", self.package_name));
+            .arg("-n");
+        
+        // 使用提供的activity参数，如果没有提供，则使用默认的NativeActivity
+        let activity_name = activity.unwrap_or("android.app.NativeActivity");
+        
+        adb.arg(format!("{}/{}", self.package_name, activity_name));
 
         if !adb.status()?.success() {
             return Err(NdkError::CmdFailed(adb));

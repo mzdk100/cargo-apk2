@@ -24,11 +24,11 @@ jobs:
         run: cargo clippy --all --all-targets --all-features --target aarch64-linux-android -- -Dwarnings
 
   check_msrv:
-    name: Check MSRV (1.82.0)
+    name: Check MSRV (1.86.0)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.82.0
+      - uses: dtolnay/rust-toolchain@1.86.0
         with:
           target: aarch64-linux-android
       - name: Check
@@ -70,7 +70,7 @@ jobs:
         run: cargo install --path cargo-apk2
 
       - name: Cargo apk build for target ${{ matrix.rust-target }}
-        run: cargo apk2 build -p ndk-examples --target ${{ matrix.rust-target }} --examples
+        run: cargo apk2 build -p ndk-examples --target ${{ matrix.rust-target }} --features hello_world
 
       - uses: actions/upload-artifact@v3
         # Only need this for CI, unless users are interested in downloading
@@ -79,7 +79,7 @@ jobs:
         name: Upload hello_world apk
         with:
           name: hello_world_${{ matrix.os }}_${{ matrix.rust-target }}
-          path: ./target/debug/apk/examples/hello_world.apk
+          path: ./target/debug/apk/ndk-examples.apk
 
   android_emulator:
     name: hello_world example on emulator

@@ -74,6 +74,55 @@ impl AndroidManifest {
     }
 }
 
+/// Android [service 元素](https://developer.android.com/guide/topics/manifest/service-element).
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Service {
+    #[serde(rename(serialize = "@android:name"))]
+    #[serde(default)]
+    pub name: String,
+    #[serde(
+        rename(serialize = "@android:enabled"),
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub enabled: Option<bool>,
+    #[serde(
+        rename(serialize = "@android:exported"),
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub exported: Option<bool>,
+    #[serde(
+        rename(serialize = "@android:permission"),
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub permission: Option<String>,
+    #[serde(
+        rename(serialize = "@android:process"),
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub process: Option<String>,
+    
+    #[serde(rename(serialize = "meta-data"))]
+    #[serde(default)]
+    pub meta_data: Vec<MetaData>,
+    #[serde(rename(serialize = "intent-filter"))]
+    #[serde(default)]
+    pub intent_filter: Vec<IntentFilter>,
+}
+
+impl Default for Service {
+    fn default() -> Self {
+        Self {
+            name: Default::default(),
+            enabled: None,
+            exported: None,
+            permission: None,
+            process: None,
+            meta_data: Default::default(),
+            intent_filter: Default::default(),
+        }
+    }
+}
+
 /// Android [application 元素](https://developer.android.com/guide/topics/manifest/application-element), containing an [`Activity`] element.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Application {
@@ -87,9 +136,11 @@ pub struct Application {
         skip_serializing_if = "Option::is_none"
     )]
     pub theme: Option<String>,
-    #[serde(rename(serialize = "@android:hasCode"))]
-    #[serde(default)]
-    pub has_code: bool,
+    #[serde(
+        rename(serialize = "@android:hasCode",),
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub has_code: Option<bool>,
     #[serde(
         rename(serialize = "@android:icon"),
         skip_serializing_if = "Option::is_none"
@@ -112,8 +163,12 @@ pub struct Application {
     #[serde(rename(serialize = "meta-data"))]
     #[serde(default)]
     pub meta_data: Vec<MetaData>,
+    #[serde(rename = "activity")]
     #[serde(default)]
-    pub activity: Activity,
+    pub activities: Vec<Activity>,
+    #[serde(rename = "service")]
+    #[serde(default)]
+    pub services: Vec<Service>,
 }
 
 /// Android [activity 元素](https://developer.android.com/guide/topics/manifest/activity-element).
@@ -171,7 +226,7 @@ pub struct Activity {
 impl Default for Activity {
     fn default() -> Self {
         Self {
-            config_changes: default_config_changes(),
+            config_changes: None,
             label: None,
             launch_mode: None,
             name: default_activity_name(),
@@ -397,7 +452,7 @@ fn default_namespace() -> String {
 }
 
 fn default_activity_name() -> String {
-    "android.app.NativeActivity".to_string()
+    "".to_string()
 }
 
 fn default_config_changes() -> Option<String> {
