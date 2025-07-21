@@ -1,13 +1,14 @@
-use crate::{
-    error::NdkError,
-    ndk::Ndk,
-    target::Target
-};
-use std::{
-    path::Path,
-    process::Command
+use {
+    crate::{error::NdkError, ndk::Ndk, target::Target},
+    std::{
+        env::{VarError, var, var_os},
+        fs::{create_dir_all, write},
+        path::Path,
+        process::Command,
+    },
 };
 
+//noinspection SpellCheckingInspection
 pub fn cargo_ndk(
     ndk: &Ndk,
     target: Target,
@@ -21,9 +22,9 @@ pub fn cargo_ndk(
     const SEP: &str = "\x1f";
 
     // Read initial CARGO_ENCODED_/RUSTFLAGS
-    let mut rustflags = match std::env::var("CARGO_ENCODED_RUSTFLAGS") {
+    let mut rustflags = match var("CARGO_ENCODED_RUSTFLAGS") {
         Ok(val) => {
-            if std::env::var_os("RUSTFLAGS").is_some() {
+            if var_os("RUSTFLAGS").is_some() {
                 panic!(
                     "Both `CARGO_ENCODED_RUSTFLAGS` and `RUSTFLAGS` were found in the environment, please clear one or the other before invoking this script"
                 );
@@ -31,8 +32,8 @@ pub fn cargo_ndk(
 
             val
         }
-        Err(std::env::VarError::NotPresent) => {
-            match std::env::var("RUSTFLAGS") {
+        Err(VarError::NotPresent) => {
+            match var("RUSTFLAGS") {
                 Ok(val) => {
                     cargo.env_remove("RUSTFLAGS");
 
@@ -44,13 +45,13 @@ pub fn cargo_ndk(
                         .collect::<Vec<_>>()
                         .join(SEP)
                 }
-                Err(std::env::VarError::NotPresent) => String::new(),
-                Err(std::env::VarError::NotUnicode(_)) => {
+                Err(VarError::NotPresent) => String::new(),
+                Err(VarError::NotUnicode(_)) => {
                     panic!("RUSTFLAGS environment variable contains non-unicode characters")
                 }
             }
         }
-        Err(std::env::VarError::NotUnicode(_)) => {
+        Err(VarError::NotUnicode(_)) => {
             panic!("CARGO_ENCODED_RUSTFLAGS environment variable contains non-unicode characters")
         }
     };
@@ -87,10 +88,10 @@ pub fn cargo_ndk(
         let cargo_apk_link_dir = target_dir
             .as_ref()
             .join("cargo-apk-temp-extra-link-libraries");
-        std::fs::create_dir_all(&cargo_apk_link_dir)
+        create_dir_all(&cargo_apk_link_dir)
             .map_err(|e| NdkError::IoPathError(cargo_apk_link_dir.clone(), e))?;
         let libgcc = cargo_apk_link_dir.join("libgcc.a");
-        std::fs::write(&libgcc, "INPUT(-lunwind)").map_err(|e| NdkError::IoPathError(libgcc, e))?;
+        write(&libgcc, "INPUT(-lunwind)").map_err(|e| NdkError::IoPathError(libgcc, e))?;
 
         // cdylibs in transitive dependencies still get built and also need this
         // workaround linker flag, yet arguments passed to `cargo rustc` are only

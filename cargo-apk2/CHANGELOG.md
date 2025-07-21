@@ -1,8 +1,12 @@
 # 未发布
 
+# 1.2.0 (2025-07-21)
+
+- 暴露cargo-apk2的环境变量，用于build script。
+
 # 1.1.0 (2025-07-10)
 
-- 支持多个Cargo.toml中支持配置多个Activity；
+- 支持多个Cargo.toml中配置多个Activity；
 - 支持编译java源代码；
 - 支持配置Service。
 

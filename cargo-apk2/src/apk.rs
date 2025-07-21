@@ -13,7 +13,7 @@ use {
         target::Target,
     },
     std::{
-        env::var_os,
+        env::{var, var_os},
         ffi::OsStr,
         fs::{create_dir_all, read_dir, remove_dir_all},
         path::{Path, PathBuf},
@@ -131,6 +131,9 @@ impl<'a> ApkBuilder<'a> {
             eprintln!("[[package.metadata.android.application.activity.meta_data]]");
             eprintln!("name = \"android.app.lib_name\"");
             eprintln!("value = \"your_lib_name\"");
+            eprintln!("[[package.metadata.android.application.activity.intent_filter]]");
+            eprintln!("actions = [\"android.intent.action.VIEW\", \"android.intent.action.MAIN\"]");
+            eprintln!("categories = [\"android.intent.category.LAUNCHER\"]");
         }
 
         // 如果用户未明确执行此操作，则在 Android S 及更高版本上导出 Activity。如果没有此操作，应用将无法在 S+ 上启动。
@@ -254,10 +257,11 @@ impl<'a> ApkBuilder<'a> {
     pub fn build(&self, artifact: &Artifact) -> Result<Apk, Error> {
         // 设置工件特定的清单默认值。
         let mut manifest = self.manifest.android_manifest.clone();
+        let apk_package = &mut manifest.package;
 
-        if manifest.package.is_empty() {
+        if apk_package.is_empty() {
             let name = artifact.name.replace('-', "_");
-            manifest.package = match artifact.r#type {
+            *apk_package = match artifact.r#type {
                 ArtifactType::Lib => format!("rust.{}", name),
                 ArtifactType::Bin => format!("rust.{}", name),
                 ArtifactType::Example => format!("rust.example.{}", name),
@@ -297,16 +301,17 @@ impl<'a> ApkBuilder<'a> {
             .apk_name
             .clone()
             .unwrap_or_else(|| artifact.name.to_string());
+        let apk_package = apk_package.to_owned();
         let use_aapt2 = self.manifest.use_aapt2.unwrap_or(true);
         self.compile_java_sources(java_sources)?;
 
         let config = ApkConfig {
             ndk: self.ndk.clone(),
             build_dir: self.build_dir.join(artifact.build_dir()),
-            apk_name,
+            apk_name: apk_name.clone(),
             use_aapt2,
-            assets,
-            resources,
+            assets: assets.clone(),
+            resources: resources.clone(),
             java_classes: self.classes_dir.clone(),
             manifest,
             disable_aapt_compression: is_debug_profile,
@@ -326,6 +331,57 @@ impl<'a> ApkBuilder<'a> {
                 self.min_sdk_version(),
                 self.cmd.target_dir(),
             )?;
+            cargo.env("CARGO_APK2_APK_NAME", &apk_name);
+            cargo.env("CARGO_APK2_PACKAGE", &apk_package);
+            if let Some(p) = assets.as_ref()
+                && let Some(p) = p.to_str()
+            {
+                cargo.env("CARGO_APK2_ASSETS_DIR", p);
+            }
+            if let Some(p) = resources.as_ref()
+                && let Some(p) = p.to_str()
+            {
+                cargo.env("CARGO_APK2_RESOURCES_DIR", p);
+            }
+            if let Some(p) = self.classes_dir.to_str() {
+                cargo.env("CARGO_APK2_CLASSES_DIR", p);
+            }
+            if let Some(p) = runtime_libs.as_ref()
+                && let Some(p) = p.to_str()
+            {
+                cargo.env("CARGO_APK2_RUNTIME_LIBS_DIR", p);
+            }
+            if let Some(p) = self.java_home.to_str() {
+                cargo.env("CARGO_APK2_JAVA_HOME", p);
+            }
+            if let Some(p) = android_build::android_sdk()
+                && let Some(p) = p.to_str()
+            {
+                cargo.env("CARGO_APK2_SDK_HOME", p);
+            }
+            if let Ok(p) = self.ndk.android_jar(self.target_sdk_version())
+                && let Some(p) = p.to_str()
+            {
+                cargo.env("CARGO_APK2_ANDROID_JAR", p);
+            }
+            if let Ok(p) = self.ndk.platform_dir(self.target_sdk_version())
+                && let Some(p) = p.to_str()
+            {
+                cargo.env("CARGO_APK2_PLATFORM_DIR", p);
+            }
+            cargo.env(
+                "CARGO_APK2_BUILD_TOOLS_VERSION",
+                self.ndk.build_tools_version(),
+            );
+            cargo.env(
+                "CARGO_APK2_MIN_SDK_VERSION",
+                self.min_sdk_version().to_string(),
+            );
+            cargo.env(
+                "CARGO_APK2_TARGET_SDK_VERSION",
+                self.target_sdk_version().to_string(),
+            );
+
             cargo.arg("build");
             if self.cmd.target().is_none() {
                 cargo.arg("--target").arg(triple);
@@ -365,7 +421,7 @@ impl<'a> ApkBuilder<'a> {
         let password_env = format!("{}_PASSWORD", keystore_env);
 
         let path = var_os(&keystore_env).map(PathBuf::from);
-        let password = std::env::var(&password_env).ok();
+        let password = var(&password_env).ok();
 
         let signing_key = match (path, password) {
             (Some(path), Some(password)) => Key { path, password },
@@ -422,16 +478,23 @@ impl<'a> ApkBuilder<'a> {
         let apk = self.build(artifact)?;
         apk.reverse_port_forwarding(self.device_serial.as_deref())?;
         apk.install(self.device_serial.as_deref())?;
-        
+
         // 查找第一个带有android.intent.action.MAIN的Activity
-        let activity = self.manifest.android_manifest.application.activities.iter()
+        let activity = self
+            .manifest
+            .android_manifest
+            .application
+            .activities
+            .iter()
             .find(|activity| {
                 activity.intent_filter.iter().any(|filter| {
-                    filter.actions.contains(&"android.intent.action.MAIN".to_string())
+                    filter
+                        .actions
+                        .contains(&"android.intent.action.MAIN".to_string())
                 })
             })
             .map(|activity| activity.name.as_str());
-        
+
         apk.start(self.device_serial.as_deref(), activity)?;
         let uid = apk.uidof(self.device_serial.as_deref())?;
 
@@ -502,5 +565,13 @@ impl<'a> ApkBuilder<'a> {
             .min_sdk_version
             .unwrap_or(23)
             .max(23)
+    }
+
+    pub fn target_sdk_version(&self) -> u32 {
+        self.manifest
+            .android_manifest
+            .sdk
+            .target_sdk_version
+            .unwrap_or(self.ndk.default_target_platform())
     }
 }

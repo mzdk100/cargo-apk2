@@ -270,3 +270,23 @@ process = ":my_service"
 
 
 如果“cargo apk2”不支持清单属性，请随意创建 PR 来添加缺失的属性。
+
+## 环境变量说明
+
+cargo-apk2 在构建过程中会自动设置以下环境变量，方便在 build.rs 或自定义脚本中使用：
+
+- `CARGO_APK2_APK_NAME`：当前生成的 APK 文件名。
+- `CARGO_APK2_PACKAGE`：APK 的包名。
+- `CARGO_APK2_ASSETS_DIR`：assets 目录的绝对路径。
+- `CARGO_APK2_RESOURCES_DIR`：resources 目录的绝对路径。
+- `CARGO_APK2_CLASSES_DIR`：用于存放编译后的 Java 类文件目录。
+- `CARGO_APK2_RUNTIME_LIBS_DIR`：运行时动态库目录。
+- `CARGO_APK2_JAVA_HOME`：Java 环境根目录。
+- `CARGO_APK2_SDK_HOME`：Android SDK 根目录。
+- `CARGO_APK2_ANDROID_JAR`：当前 targetSdkVersion 对应的 android.jar 路径。
+- `CARGO_APK2_PLATFORM_DIR`：当前 targetSdkVersion 对应的 platform 目录。
+- `CARGO_APK2_BUILD_TOOLS_VERSION`：当前使用的Android Build Tools 版本号。
+- `CARGO_APK2_MIN_SDK_VERSION`：minSdkVersion。
+- `CARGO_APK2_TARGET_SDK_VERSION`：targetSdkVersion。
+
+这些变量可用于自动化脚本、资源处理、Java集成等高级场景。
