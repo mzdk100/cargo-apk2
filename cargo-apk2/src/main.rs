@@ -1,8 +1,9 @@
-use std::collections::HashMap;
-
-use cargo_apk2::{ApkBuilder, Error};
-use cargo_subcommand::Subcommand;
-use clap::{CommandFactory, FromArgMatches, Parser};
+use {
+    cargo_apk2::{ApkBuilder, Error},
+    cargo_subcommand::{Artifact, ArtifactType, Subcommand},
+    clap::{CommandFactory, FromArgMatches, Parser},
+    std::collections::HashMap,
+};
 
 #[derive(Parser)]
 #[command(bin_name = "cargo")]
@@ -117,13 +118,27 @@ fn split_apk_and_cargo_args(input: Vec<String>) -> (Args, Vec<String>) {
     (args, split_args.cargo_args)
 }
 
-fn iterator_single_item<T>(mut iter: impl Iterator<Item = T>) -> Option<T> {
-    let first_item = iter.next()?;
-    if iter.next().is_some() {
-        None
-    } else {
-        Some(first_item)
+fn get_single_artifact(cmd: &Subcommand) -> Result<Artifact, Error> {
+    let mut iter = cmd.artifacts();
+    let args = cmd.args();
+    if args.examples || args.bins || !args.example.is_empty() || !args.bin.is_empty() {
+        let first_item = iter.next().ok_or(Error::NoArtifactAvailable)?;
+        return if iter.next().is_some() {
+            Err(Error::OnlySupportSingleArtifact(
+                cmd.artifacts()
+                    .map(|i| i.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            ))
+        } else {
+            Ok(first_item.to_owned())
+        };
     }
+
+    iter.filter(|i| i.r#type == ArtifactType::Lib)
+        .next()
+        .map(|i| i.to_owned())
+        .ok_or(Error::NoArtifactAvailable)
 }
 
 fn main() -> anyhow::Result<()> {
@@ -155,14 +170,14 @@ fn main() -> anyhow::Result<()> {
         ApkSubCmd::Run { args, no_logcat } => {
             let cmd = Subcommand::new(args.subcommand_args)?;
             let builder = ApkBuilder::from_subcommand(&cmd, args.device)?;
-            let artifact = iterator_single_item(cmd.artifacts()).ok_or(Error::invalid_args())?;
-            builder.run(artifact, no_logcat)?;
+            let artifact = get_single_artifact(&cmd)?;
+            builder.run(&artifact, no_logcat)?;
         }
         ApkSubCmd::Gdb { args } => {
             let cmd = Subcommand::new(args.subcommand_args)?;
             let builder = ApkBuilder::from_subcommand(&cmd, args.device)?;
-            let artifact = iterator_single_item(cmd.artifacts()).ok_or(Error::invalid_args())?;
-            builder.gdb(artifact)?;
+            let artifact = get_single_artifact(&cmd)?;
+            builder.gdb(&artifact)?;
         }
     }
     Ok(())

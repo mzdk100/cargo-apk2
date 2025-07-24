@@ -68,6 +68,7 @@ impl<'a> ApkBuilder<'a> {
             Inheritable::Value(v) => v.clone(),
             Inheritable::Inherited { workspace: true } => {
                 let workspace = workspace_manifest
+                    .clone()
                     .ok_or(Error::InheritanceMissingWorkspace)?
                     .workspace
                     .unwrap_or_else(|| {
@@ -149,6 +150,21 @@ impl<'a> ApkBuilder<'a> {
                 });
         }
 
+        // 在`<meta-data />`中如果没有提供"android.app.lib_name"的值，则自动优先使用`[lib]`中提供的名称，否则将使用`[package]`中的名称
+        let lib_name = cmd.artifacts().next().map(|i| i.name.replace("-", "_"));
+        manifest
+            .android_manifest
+            .application
+            .activities
+            .iter_mut()
+            .for_each(|i| {
+                i.meta_data.iter_mut().for_each(|i| {
+                    if i.name == "android.app.lib_name" && i.value.is_none() {
+                        i.value = lib_name.clone();
+                    }
+                })
+            });
+
         Ok(Self {
             cmd,
             ndk,
@@ -184,6 +200,10 @@ impl<'a> ApkBuilder<'a> {
     }
 
     pub fn compile_java_sources(&self, java_sources: Option<PathBuf>) -> Result<(), Error> {
+        // 创建临时目录用于编译
+        let _ = remove_dir_all(&self.classes_dir); // 清理旧的编译结果
+        create_dir_all(&self.classes_dir)?;
+
         let java_sources = match java_sources {
             Some(p) => p,
             None => return Ok(()),
@@ -194,10 +214,6 @@ impl<'a> ApkBuilder<'a> {
         }
 
         println!("Compiling Java sources...");
-
-        // 创建临时目录用于编译
-        let _ = remove_dir_all(&self.classes_dir); // 清理旧的编译结果
-        create_dir_all(&self.classes_dir)?;
 
         // 获取Android SDK中的android.jar路径
         let target_sdk_version = self
@@ -333,6 +349,7 @@ impl<'a> ApkBuilder<'a> {
             )?;
             cargo.env("CARGO_APK2_APK_NAME", &apk_name);
             cargo.env("CARGO_APK2_PACKAGE", &apk_package);
+            cargo.env("CARGO_APK2_ARTIFACT", &artifact);
             if let Some(p) = assets.as_ref()
                 && let Some(p) = p.to_str()
             {
@@ -459,11 +476,7 @@ impl<'a> ApkBuilder<'a> {
         };
 
         // 添加Java类
-        let res = apk.add_java_classes();
-        if self.classes_dir.exists() {
-            remove_dir_all(&self.classes_dir)?;
-        }
-        res?;
+        apk.add_java_classes()?;
         let unsigned = apk.add_pending_libs_and_align()?;
 
         println!(

@@ -323,7 +323,7 @@ pub struct MetaData {
     #[serde(rename(serialize = "@android:name"))]
     pub name: String,
     #[serde(rename(serialize = "@android:value"))]
-    pub value: String,
+    pub value: Option<String>,
 }
 
 //noinspection SpellCheckingInspection

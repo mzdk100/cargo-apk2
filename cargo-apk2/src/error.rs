@@ -34,6 +34,10 @@ pub enum Error {
     InheritanceMissingWorkspace,
     #[error("Failed to inherit field: `workspace.{0}` was not defined in workspace root manifest")]
     WorkspaceMissingInheritedField(&'static str),
+    #[error("No artifact available. Please check lib, bins or examples of configuration.")]
+    NoArtifactAvailable,
+    #[error("Many artifacts are given ({0}), only support single artifact currently.")]
+    OnlySupportSingleArtifact(String),
 }
 
 impl Error {

@@ -288,5 +288,6 @@ cargo-apk2 在构建过程中会自动设置以下环境变量，方便在 build
 - `CARGO_APK2_BUILD_TOOLS_VERSION`：当前使用的Android Build Tools 版本号。
 - `CARGO_APK2_MIN_SDK_VERSION`：minSdkVersion。
 - `CARGO_APK2_TARGET_SDK_VERSION`：targetSdkVersion。
+- `CARGO_APK2_ARTIFACT`：动态库输出路径。
 
 这些变量可用于自动化脚本、资源处理、Java集成等高级场景。
