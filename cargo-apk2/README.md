@@ -54,8 +54,20 @@ resources = "path/to/resources_folder"
 assets = "path/to/assets_folder"
 
 # Java源代码的文件夹路径。
-# 如果未指定，则会跳过Java编译步骤。
+# 如果未指定，则有可能跳过Java编译步骤。
 java_sources = "path/to/java"
+
+# Kotlin源代码的文件夹路径。
+# 如果未指定，则会跳过Kotlin编译步骤。
+kotlin_sources = "path/to/kotlin"
+
+# Groovy源代码的文件夹路径。
+# 如果未指定，则会跳过Groovy编译步骤。
+groovy_sources = "path/to/groovy"
+
+# Scala源代码的文件夹路径。
+# 如果未指定，则会跳过Scala编译步骤。
+scala_sources = "path/to/scala"
 
 # 最终APK文件的名称。默认为包名。
 apk_name = "myapp"

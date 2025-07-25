@@ -24,6 +24,9 @@ pub(crate) struct Manifest {
     pub(crate) assets: Option<PathBuf>,
     pub(crate) resources: Option<PathBuf>,
     pub(crate) java_sources: Option<PathBuf>,
+    pub(crate) kotlin_sources: Option<PathBuf>,
+    pub(crate) scala_sources: Option<PathBuf>,
+    pub(crate) groovy_sources: Option<PathBuf>,
     pub(crate) runtime_libs: Option<PathBuf>,
     /// 将配置文件映射到密钥库
     pub(crate) signing: HashMap<String, Signing>,
@@ -53,6 +56,9 @@ impl Manifest {
             assets: metadata.assets,
             resources: metadata.resources,
             java_sources: metadata.java_sources,
+            kotlin_sources: metadata.kotlin_sources,
+            scala_sources: metadata.scala_sources,
+            groovy_sources: metadata.groovy_sources,
             runtime_libs: metadata.runtime_libs,
             signing: metadata.signing,
             reverse_port_forward: metadata.reverse_port_forward,
@@ -110,6 +116,12 @@ struct AndroidMetadata {
     resources: Option<PathBuf>,
     /// Java源文件的路径
     java_sources: Option<PathBuf>,
+    /// Kotlin源文件的路径
+    kotlin_sources: Option<PathBuf>,
+    /// Scala源文件的路径
+    scala_sources: Option<PathBuf>,
+    /// Groovy源文件的路径
+    groovy_sources: Option<PathBuf>,
     runtime_libs: Option<PathBuf>,
     /// Maps profiles to keystores
     #[serde(default)]

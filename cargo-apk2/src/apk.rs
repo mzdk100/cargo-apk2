@@ -1,4 +1,3 @@
-use std::fs::{create_dir_all, remove_dir_all};
 use {
     crate::{
         error::Error,
@@ -14,9 +13,9 @@ use {
         target::Target,
     },
     std::{
-        env::{var, var_os},
+        env::var,
         ffi::OsStr,
-        fs::read_dir,
+        fs::{create_dir_all, read_dir},
         path::{Path, PathBuf},
         process::Command,
     },
@@ -25,7 +24,10 @@ use {
 pub struct ApkBuilder<'a> {
     cmd: &'a Subcommand,
     ndk: Ndk,
-    java_home: PathBuf,
+    java_home: Option<PathBuf>,
+    kotlin_home: Option<PathBuf>,
+    scala_home: Option<PathBuf>,
+    groovy_home: Option<PathBuf>,
     manifest: Manifest,
     build_dir: PathBuf,
     classes_dir: PathBuf,
@@ -44,7 +46,10 @@ impl<'a> ApkBuilder<'a> {
             cmd.manifest().display()
         );
         let ndk = Ndk::from_env()?;
-        let java_home = android_build::java_home().ok_or(Error::JdkNotFound)?;
+        let java_home = android_build::java_home();
+        let groovy_home = var("GROOVY_HOME").ok().map(PathBuf::from);
+        let kotlin_home = var("KOTLIN_HOME").ok().map(PathBuf::from);
+        let scala_home = var("SCALA_HOME").ok().map(PathBuf::from);
         let mut manifest = Manifest::parse_from_toml(cmd.manifest())?;
         let workspace_manifest: Option<Root> = cmd
             .workspace_manifest()
@@ -170,6 +175,9 @@ impl<'a> ApkBuilder<'a> {
             cmd,
             ndk,
             java_home,
+            groovy_home,
+            kotlin_home,
+            scala_home,
             manifest,
             build_dir,
             classes_dir,
@@ -200,6 +208,33 @@ impl<'a> ApkBuilder<'a> {
         Ok(())
     }
 
+    /// 递归收集所有源文件
+    fn collect_source_files<P>(
+        dir: P,
+        cmd: &mut Command,
+        has_files: &mut bool,
+        extension: &str,
+    ) -> Result<(), NdkError>
+    where
+        P: AsRef<Path>,
+    {
+        for entry in
+            read_dir(&dir).map_err(|e| NdkError::IoPathError(dir.as_ref().to_path_buf(), e))?
+        {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.is_dir() {
+                Self::collect_source_files(&path, cmd, has_files, extension)?;
+            } else if path.extension() == Some(OsStr::new(extension)) {
+                cmd.arg(&path);
+                *has_files = true;
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn compile_java_sources<P>(&self, java_sources: P) -> Result<(), Error>
     where
         P: AsRef<Path>,
@@ -209,16 +244,16 @@ impl<'a> ApkBuilder<'a> {
         }
 
         // 获取Android SDK中的android.jar路径
-        let target_sdk_version = self
-            .manifest
-            .android_manifest
-            .sdk
-            .target_sdk_version
-            .unwrap_or_else(|| self.ndk.default_target_platform());
-        let android_jar = self.ndk.android_jar(target_sdk_version)?;
+        let android_jar = self.ndk.android_jar(self.target_sdk_version())?;
 
         // 使用javac编译Java源文件
-        let mut javac = Command::new(self.java_home.join("bin").join("javac"));
+        let mut javac = Command::new(
+            self.java_home
+                .as_ref()
+                .ok_or(Error::JdkNotFound)?
+                .join("bin")
+                .join("javac"),
+        );
         javac
             .arg("-d")
             .arg(&self.classes_dir)
@@ -227,35 +262,7 @@ impl<'a> ApkBuilder<'a> {
 
         // 添加所有Java源文件
         let mut has_java_files = false;
-
-        // 递归收集所有Java源文件
-        fn collect_java_files<P>(
-            dir: P,
-            javac: &mut Command,
-            has_files: &mut bool,
-        ) -> Result<(), NdkError>
-        where
-            P: AsRef<Path>,
-        {
-            for entry in
-                read_dir(&dir).map_err(|e| NdkError::IoPathError(dir.as_ref().to_path_buf(), e))?
-            {
-                let entry = entry?;
-                let path = entry.path();
-
-                if path.is_dir() {
-                    collect_java_files(&path, javac, has_files)?;
-                } else if path.extension() == Some(OsStr::new("java")) {
-                    javac.arg(&path);
-                    *has_files = true;
-                }
-            }
-
-            Ok(())
-        }
-
-        collect_java_files(&java_sources, &mut javac, &mut has_java_files)?;
-
+        Self::collect_source_files(&java_sources, &mut javac, &mut has_java_files, "java")?;
         if !has_java_files {
             println!("No Java source files found in {:?}", java_sources.as_ref());
             return Ok(());
@@ -263,6 +270,156 @@ impl<'a> ApkBuilder<'a> {
 
         if !javac.status()?.success() {
             return Err(Error::CmdFailed(javac));
+        }
+
+        Ok(())
+    }
+
+    //noinspection SpellCheckingInspection
+    pub fn compile_kotlin_sources<P>(&self, kotlin_sources: P) -> Result<(), Error>
+    where
+        P: AsRef<Path>,
+    {
+        if !kotlin_sources.as_ref().exists() {
+            return Ok(());
+        }
+
+        // 获取Android SDK中的android.jar路径
+        let android_jar = self.ndk.android_jar(self.target_sdk_version())?;
+
+        // 使用kotlinc编译Kotlin源文件
+        let mut kotlinc = Command::new(
+            self.kotlin_home
+                .as_ref()
+                .ok_or(Error::KotlinNotFound)?
+                .join("bin")
+                .join(if cfg!(windows) {
+                    "kotlinc.bat"
+                } else {
+                    "kotlinc"
+                }),
+        );
+        kotlinc
+            .arg("-d")
+            .arg(&self.classes_dir)
+            .arg("-classpath")
+            .arg(&android_jar);
+
+        // 添加所有Kotlin源文件
+        let mut has_kotlin_files = false;
+        Self::collect_source_files(&kotlin_sources, &mut kotlinc, &mut has_kotlin_files, "kt")?;
+        if !has_kotlin_files {
+            println!(
+                "No Kotlin source files found in {:?}",
+                kotlin_sources.as_ref()
+            );
+            return Ok(());
+        }
+
+        if !kotlinc.status()?.success() {
+            return Err(Error::CmdFailed(kotlinc));
+        }
+
+        Ok(())
+    }
+
+    pub fn compile_scala_sources<P>(&self, scala_sources: P) -> Result<(), Error>
+    where
+        P: AsRef<Path>,
+    {
+        if !scala_sources.as_ref().exists() {
+            return Ok(());
+        }
+
+        // 获取Android SDK中的android.jar路径
+        let android_jar = self.ndk.android_jar(self.target_sdk_version())?;
+
+        // 使用scalac编译Scala源文件
+        let mut scalac = Command::new(
+            self.scala_home
+                .as_ref()
+                .ok_or(Error::ScalaNotFound)?
+                .join("bin")
+                .join(if cfg!(windows) {
+                    "scalac.bat"
+                } else {
+                    "scalac"
+                }),
+        );
+        const PATH_SEPARATOR: char = if cfg!(windows) { ';' } else { ':' };
+        scalac
+            .arg("-d")
+            .arg(&self.classes_dir)
+            .arg("-classpath")
+            .arg(format!("{}{}", PATH_SEPARATOR, &android_jar.display()));
+
+        // 添加所有Scala源文件
+        let mut has_scala_files = false;
+        Self::collect_source_files(&scala_sources, &mut scalac, &mut has_scala_files, "scala")?;
+        if !has_scala_files {
+            println!(
+                "No Scala source files found in {:?}",
+                scala_sources.as_ref()
+            );
+            return Ok(());
+        }
+
+        if !scalac.status()?.success() {
+            return Err(Error::CmdFailed(scalac));
+        }
+
+        Ok(())
+    }
+
+    //noinspection SpellCheckingInspection
+    pub fn compile_groovy_sources<P>(&self, groovy_sources: P) -> Result<(), Error>
+    where
+        P: AsRef<Path>,
+    {
+        if !groovy_sources.as_ref().exists() {
+            return Ok(());
+        }
+
+        // 获取Android SDK中的android.jar路径
+        let android_jar = self.ndk.android_jar(self.target_sdk_version())?;
+
+        // 使用groovyc编译Groovy源文件
+        let mut groovyc = Command::new(
+            self.groovy_home
+                .as_ref()
+                .ok_or(Error::GroovyNotFound)?
+                .join("bin")
+                .join(if cfg!(windows) {
+                    "groovyc.bat"
+                } else {
+                    "groovyc"
+                }),
+        );
+        groovyc
+            .arg("-d")
+            .arg(&self.classes_dir)
+            .arg("-classpath")
+            .arg(&android_jar)
+            .arg("--compile-static");
+
+        // 添加所有Groovy源文件
+        let mut has_groovy_files = false;
+        Self::collect_source_files(
+            &groovy_sources,
+            &mut groovyc,
+            &mut has_groovy_files,
+            "groovy",
+        )?;
+        if !has_groovy_files {
+            println!(
+                "No Groovy source files found in {:?}",
+                groovy_sources.as_ref()
+            );
+            return Ok(());
+        }
+
+        if !groovyc.status()?.success() {
+            return Err(Error::CmdFailed(groovyc));
         }
 
         Ok(())
@@ -305,6 +462,21 @@ impl<'a> ApkBuilder<'a> {
             .java_sources
             .as_ref()
             .map(|src| dunce::simplified(&crate_path.join(src)).to_owned());
+        let kotlin_sources = self
+            .manifest
+            .kotlin_sources
+            .as_ref()
+            .map(|src| dunce::simplified(&crate_path.join(src)).to_owned());
+        let scala_sources = self
+            .manifest
+            .scala_sources
+            .as_ref()
+            .map(|src| dunce::simplified(&crate_path.join(src)).to_owned());
+        let groovy_sources = self
+            .manifest
+            .groovy_sources
+            .as_ref()
+            .map(|src| dunce::simplified(&crate_path.join(src)).to_owned());
         let runtime_libs = self
             .manifest
             .runtime_libs
@@ -335,15 +507,36 @@ impl<'a> ApkBuilder<'a> {
         };
         let mut apk = config.create_apk(&gen_java_dir)?;
 
-        // 创建临时目录用于编译Java
-        let _ = remove_dir_all(&self.classes_dir); // 清理旧的编译结果
+        // 创建临时目录用于编译Java/Kotlin/Scala/Groovy
         create_dir_all(&self.classes_dir)?;
-        println!("Compiling Java sources...",);
+
+        // 编译Java源文件
+        if gen_java_dir.exists() || java_sources.is_some() {
+            println!("Compiling Java sources...",);
+        }
         if gen_java_dir.exists() {
             self.compile_java_sources(gen_java_dir)?;
         }
         if let Some(java_sources) = java_sources {
             self.compile_java_sources(java_sources)?;
+        }
+
+        // 编译Kotlin源文件
+        if let Some(kotlin_sources) = kotlin_sources {
+            println!("Compiling Kotlin sources...",);
+            self.compile_kotlin_sources(kotlin_sources)?;
+        }
+
+        // 编译Scala源文件
+        if let Some(scala_sources) = scala_sources {
+            println!("Compiling Scala sources...",);
+            self.compile_scala_sources(scala_sources)?;
+        }
+
+        // 编译Groovy源文件
+        if let Some(groovy_sources) = groovy_sources {
+            println!("Compiling Groovy sources...",);
+            self.compile_groovy_sources(groovy_sources)?;
         }
 
         // 编译动态库
@@ -379,12 +572,27 @@ impl<'a> ApkBuilder<'a> {
             {
                 cargo.env("CARGO_APK2_RUNTIME_LIBS_DIR", p);
             }
-            if let Some(p) = self.java_home.to_str() {
-                cargo.env("CARGO_APK2_JAVA_HOME", p);
-            }
-            if let Some(p) = android_build::android_sdk()
+            if let Some(p) = self.java_home.as_ref()
                 && let Some(p) = p.to_str()
             {
+                cargo.env("CARGO_APK2_JAVA_HOME", p);
+            }
+            if let Some(p) = self.kotlin_home.as_ref()
+                && let Some(p) = p.to_str()
+            {
+                cargo.env("CARGO_APK2_KOTLIN_HOME", p);
+            }
+            if let Some(p) = self.scala_home.as_ref()
+                && let Some(p) = p.to_str()
+            {
+                cargo.env("CARGO_APK2_SCALA_HOME", p);
+            }
+            if let Some(p) = self.groovy_home.as_ref()
+                && let Some(p) = p.to_str()
+            {
+                cargo.env("CARGO_APK2_GROOVY_HOME", p);
+            }
+            if let Some(p) = self.ndk.android_sdk().to_str() {
                 cargo.env("CARGO_APK2_SDK_HOME", p);
             }
             if let Ok(p) = self.ndk.android_jar(self.target_sdk_version())
@@ -448,12 +656,12 @@ impl<'a> ApkBuilder<'a> {
         );
         let password_env = format!("{}_PASSWORD", keystore_env);
 
-        let path = var_os(&keystore_env).map(PathBuf::from);
+        let path = var(&keystore_env).map(PathBuf::from);
         let password = var(&password_env).ok();
 
         let signing_key = match (path, password) {
-            (Some(path), Some(password)) => Key { path, password },
-            (Some(path), None) if is_debug_profile => {
+            (Ok(path), Some(password)) => Key { path, password },
+            (Ok(path), None) if is_debug_profile => {
                 eprintln!(
                     "{} not specified, falling back to default password",
                     password_env
@@ -463,7 +671,7 @@ impl<'a> ApkBuilder<'a> {
                     password: ndk_build2::ndk::DEFAULT_DEV_KEYSTORE_PASSWORD.to_owned(),
                 }
             }
-            (Some(path), None) => {
+            (Ok(path), None) => {
                 eprintln!(
                     "`{}` was specified via `{}`, but `{}` was not specified, both or neither must be present for profiles other than `dev`",
                     path.display(),
@@ -472,7 +680,7 @@ impl<'a> ApkBuilder<'a> {
                 );
                 return Err(Error::MissingReleaseKey(profile_name.to_owned()));
             }
-            (None, _) => {
+            (Err(_), _) => {
                 if let Some(msk) = self.manifest.signing.get(profile_name) {
                     Key {
                         path: crate_path.join(&msk.path),
@@ -498,7 +706,12 @@ impl<'a> ApkBuilder<'a> {
         Ok(unsigned.sign(signing_key)?)
     }
 
-    pub fn run(&self, artifact: &Artifact, no_logcat: bool) -> Result<(), Error> {
+    pub fn run(
+        &self,
+        artifact: &Artifact,
+        no_logcat: bool,
+        show_logcat_time: bool,
+    ) -> Result<(), Error> {
         let apk = self.build(artifact)?;
         apk.reverse_port_forwarding(self.device_serial.as_deref())?;
         apk.install(self.device_serial.as_deref())?;
@@ -526,11 +739,25 @@ impl<'a> ApkBuilder<'a> {
             self.ndk
                 .adb(self.device_serial.as_deref())?
                 .arg("logcat")
-                .arg("-v")
-                .arg("color")
-                .arg("--uid")
-                .arg(uid.to_string())
+                .arg("-c")
                 .status()?;
+
+            let mut adb = self.ndk.adb(self.device_serial.as_deref())?;
+            adb.arg("logcat").arg("-v");
+
+            // 根据show_logcat_time参数决定是否显示时间
+            if show_logcat_time {
+                adb.arg("time");
+            } else {
+                adb.arg("brief");
+            }
+            // 添加颜色支持
+            adb.arg("color");
+
+            // 过滤指定应用的日志
+            adb.arg("--uid").arg(uid.to_string());
+
+            adb.status()?;
         }
 
         Ok(())
@@ -574,6 +801,7 @@ impl<'a> ApkBuilder<'a> {
                 return Err(NdkError::CmdFailed(cargo).into());
             }
         }
+
         Ok(())
     }
 

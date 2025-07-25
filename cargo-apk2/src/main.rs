@@ -57,6 +57,9 @@ enum ApkSubCmd {
         /// Do not print or follow `logcat` after running the app
         #[clap(short, long)]
         no_logcat: bool,
+        /// Show timestamp in logcat output (default: no timestamp)
+        #[clap(long)]
+        show_logcat_time: bool,
     },
     /// Start a gdb session attached to an adb device with symbols loaded
     Gdb {
@@ -167,11 +170,11 @@ fn main() -> anyhow::Result<()> {
             let builder = ApkBuilder::from_subcommand(&cmd, args.device)?;
             builder.default(&cargo_cmd, &cargo_args)?;
         }
-        ApkSubCmd::Run { args, no_logcat } => {
+        ApkSubCmd::Run { args, no_logcat, show_logcat_time } => {
             let cmd = Subcommand::new(args.subcommand_args)?;
             let builder = ApkBuilder::from_subcommand(&cmd, args.device)?;
             let artifact = get_single_artifact(&cmd)?;
-            builder.run(&artifact, no_logcat)?;
+            builder.run(&artifact, no_logcat, show_logcat_time)?;
         }
         ApkSubCmd::Gdb { args } => {
             let cmd = Subcommand::new(args.subcommand_args)?;

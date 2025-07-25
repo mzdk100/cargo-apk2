@@ -9,6 +9,9 @@
       <sourceFolder url="file://$MODULE_DIR$/ndk-examples/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/java-examples/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/ndk-examples/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/groovy-examples/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/kotlin-examples/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/scala-examples/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

@@ -22,8 +22,26 @@ pub enum Error {
     environment variable."
     )]
     JdkNotFound,
+    #[error(
+        "Groovy SDK is not found. \
+    Please set the path to the Groovy with the $GROOVY_HOME \
+    environment variable."
+    )]
+    GroovyNotFound,
+    #[error(
+        "Kotlin SDK is not found. \
+    Please set the path to the Kotlin with the $KOTLIN_HOME \
+    environment variable."
+    )]
+    KotlinNotFound,
     #[error("Path `{0:?}` doesn't exist.")]
     PathNotFound(PathBuf),
+    #[error(
+        "Scala SDK is not found. \
+    Please set the path to the Scala with the $SCALA_HOME \
+    environment variable."
+    )]
+    ScalaNotFound,
     #[error(transparent)]
     Io(#[from] IoError),
     #[error("Configure a release keystore via `[package.metadata.android.signing.{0}]`")]

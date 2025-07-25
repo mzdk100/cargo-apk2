@@ -171,17 +171,24 @@ impl Ndk {
 
     //noinspection SpellCheckingInspection
     pub fn build_tool_utf8(&self, tool: &str) -> Result<Command, NdkError> {
-        let path = self.build_tools().join(tool);
-        if !path.exists() {
-            return Err(NdkError::CmdNotFound(tool.to_string()));
-        }
-        let mut cmd = Command::new("cmd");
-        cmd.arg("/C").arg(format!(
-            "chcp 65001 && {}",
-            dunce::canonicalize(path)?.display()
-        ));
+        #[cfg(windows)]
+        {
+            let path = self.build_tools().join(tool);
+            if !path.exists() {
+                return Err(NdkError::CmdNotFound(tool.to_string()));
+            }
 
-        Ok(cmd)
+            let mut cmd = Command::new("cmd");
+            cmd.arg("/C").arg(format!(
+                "chcp 65001 && {}",
+                dunce::canonicalize(path)?.display()
+            ));
+
+            Ok(cmd)
+        }
+
+        #[cfg(not(windows))]
+        self.build_tool(tool)
     }
 
     pub fn platform_tool_path(&self, tool: &str) -> Result<PathBuf, NdkError> {
