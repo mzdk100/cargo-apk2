@@ -100,7 +100,7 @@ pub struct Service {
         skip_serializing_if = "Option::is_none"
     )]
     pub process: Option<String>,
-    
+
     #[serde(rename(serialize = "meta-data"))]
     #[serde(default)]
     pub meta_data: Vec<MetaData>,
@@ -322,8 +322,16 @@ pub struct IntentFilterData {
 pub struct MetaData {
     #[serde(rename(serialize = "@android:name"))]
     pub name: String,
-    #[serde(rename(serialize = "@android:value"))]
+    #[serde(
+        rename(serialize = "@android:value"),
+        skip_serializing_if = "Option::is_none"
+    )]
     pub value: Option<String>,
+    #[serde(
+        rename(serialize = "@android:resource"),
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub resource: Option<String>,
 }
 
 //noinspection SpellCheckingInspection

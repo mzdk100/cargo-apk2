@@ -1,3 +1,4 @@
+use std::fs::{create_dir_all, remove_dir_all};
 use {
     crate::{
         error::Error,
@@ -15,7 +16,7 @@ use {
     std::{
         env::{var, var_os},
         ffi::OsStr,
-        fs::{create_dir_all, read_dir, remove_dir_all},
+        fs::read_dir,
         path::{Path, PathBuf},
         process::Command,
     },
@@ -199,21 +200,13 @@ impl<'a> ApkBuilder<'a> {
         Ok(())
     }
 
-    pub fn compile_java_sources(&self, java_sources: Option<PathBuf>) -> Result<(), Error> {
-        // 创建临时目录用于编译
-        let _ = remove_dir_all(&self.classes_dir); // 清理旧的编译结果
-        create_dir_all(&self.classes_dir)?;
-
-        let java_sources = match java_sources {
-            Some(p) => p,
-            None => return Ok(()),
-        };
-
-        if !java_sources.exists() {
-            return Err(Error::PathNotFound(java_sources));
+    pub fn compile_java_sources<P>(&self, java_sources: P) -> Result<(), Error>
+    where
+        P: AsRef<Path>,
+    {
+        if !java_sources.as_ref().exists() {
+            return Ok(());
         }
-
-        println!("Compiling Java sources...");
 
         // 获取Android SDK中的android.jar路径
         let target_sdk_version = self
@@ -236,12 +229,17 @@ impl<'a> ApkBuilder<'a> {
         let mut has_java_files = false;
 
         // 递归收集所有Java源文件
-        fn collect_java_files(
-            dir: &Path,
+        fn collect_java_files<P>(
+            dir: P,
             javac: &mut Command,
             has_files: &mut bool,
-        ) -> Result<(), NdkError> {
-            for entry in read_dir(dir).map_err(|e| NdkError::IoPathError(dir.to_path_buf(), e))? {
+        ) -> Result<(), NdkError>
+        where
+            P: AsRef<Path>,
+        {
+            for entry in
+                read_dir(&dir).map_err(|e| NdkError::IoPathError(dir.as_ref().to_path_buf(), e))?
+            {
                 let entry = entry?;
                 let path = entry.path();
 
@@ -259,7 +257,7 @@ impl<'a> ApkBuilder<'a> {
         collect_java_files(&java_sources, &mut javac, &mut has_java_files)?;
 
         if !has_java_files {
-            println!("No Java source files found in {:?}", java_sources);
+            println!("No Java source files found in {:?}", java_sources.as_ref());
             return Ok(());
         }
 
@@ -319,11 +317,12 @@ impl<'a> ApkBuilder<'a> {
             .unwrap_or_else(|| artifact.name.to_string());
         let apk_package = apk_package.to_owned();
         let use_aapt2 = self.manifest.use_aapt2.unwrap_or(true);
-        self.compile_java_sources(java_sources)?;
+        let build_dir = self.build_dir.join(artifact.build_dir());
+        let gen_java_dir = build_dir.join("java");
 
         let config = ApkConfig {
             ndk: self.ndk.clone(),
-            build_dir: self.build_dir.join(artifact.build_dir()),
+            build_dir,
             apk_name: apk_name.clone(),
             use_aapt2,
             assets: assets.clone(),
@@ -334,8 +333,20 @@ impl<'a> ApkBuilder<'a> {
             strip: self.manifest.strip,
             reverse_port_forward: self.manifest.reverse_port_forward.clone(),
         };
-        let mut apk = config.create_apk()?;
+        let mut apk = config.create_apk(&gen_java_dir)?;
 
+        // 创建临时目录用于编译Java
+        let _ = remove_dir_all(&self.classes_dir); // 清理旧的编译结果
+        create_dir_all(&self.classes_dir)?;
+        println!("Compiling Java sources...",);
+        if gen_java_dir.exists() {
+            self.compile_java_sources(gen_java_dir)?;
+        }
+        if let Some(java_sources) = java_sources {
+            self.compile_java_sources(java_sources)?;
+        }
+
+        // 编译动态库
         for target in &self.build_targets {
             let triple = target.rust_triple();
             let build_dir = self.cmd.build_dir(Some(triple));

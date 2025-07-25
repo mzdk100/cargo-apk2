@@ -169,7 +169,6 @@ uses_cleartext_traffic = true
 # 参见 https://developer.android.com/guide/topics/manifest/meta-data-element
 #
 # 注意：可以有多个.meta_data条目。
-# 注意：当前不支持`resource`属性。
 [[package.metadata.android.application.meta_data]]
 name = "com.samsung.android.vr.application.mode"
 value = "vr_only"
@@ -214,7 +213,6 @@ always_retain_task_state = true
 # 参见 https://developer.android.com/guide/topics/manifest/meta-data-element
 #
 # 注意：可以有多个meta_data条目。
-# 注意：当前不支持`resource`属性。
 [[package.metadata.android.application.activity.meta_data]]
 name = "com.oculus.vr.focusaware"
 value = "true"
@@ -261,6 +259,11 @@ permission = "android.permission.BIND_JOB_SERVICE"
 # 如果为此属性分配的名称以英文冒号 (:) 开头，则系统会在需要时创建应用专用的新进程，并且服务会在该进程中运行。
 # 如果进程名称以小写字符开头，则服务将在采用该名称的全局进程中运行，前提是它具有相应权限。这样，不同应用中的组件就可以共享进程，从而减少资源使用量。
 process = ":my_service"
+
+[[package.metadata.android.application.service.meta_data]]
+name = "android.accessibilityservice"
+# 引用xml资源
+resource = "@xml/accessibilityservice"
 
 # 通过`adb reverse`设置反向端口转发，这意味着如果Android设备连接到`localhost`上的端口`1338`，
 # 它将被路由到主机上的端口`1338`。源和目标端口可以不同，请参阅`adb`帮助页面以获取可能的配置。

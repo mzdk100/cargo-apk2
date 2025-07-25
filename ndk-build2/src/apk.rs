@@ -9,7 +9,7 @@ use {
     std::{
         collections::{HashMap, HashSet},
         ffi::OsStr,
-        fs::{copy, create_dir_all, read_dir, remove_file, rename},
+        fs::{copy, create_dir_all, read_dir, remove_dir_all, remove_file, rename},
         io::{Error as IoError, ErrorKind},
         path::{Path, PathBuf},
         process::Command,
@@ -54,6 +54,14 @@ impl ApkConfig {
     fn build_tool(&self, tool: &'static str) -> Result<Command, NdkError> {
         let mut cmd = self.ndk.build_tool(tool)?;
         cmd.current_dir(&self.build_dir);
+
+        Ok(cmd)
+    }
+
+    fn build_tool_utf8(&self, tool: &'static str) -> Result<Command, NdkError> {
+        let mut cmd = self.ndk.build_tool_utf8(tool)?;
+        cmd.current_dir(&self.build_dir);
+
         Ok(cmd)
     }
 
@@ -68,7 +76,10 @@ impl ApkConfig {
         self.build_dir.join(format!("{}.apk", self.apk_name))
     }
 
-    pub fn create_apk(&self) -> Result<UnalignedApk, NdkError> {
+    pub fn create_apk<P>(&self, gen_java_dir: P) -> Result<UnalignedApk, NdkError>
+    where
+        P: AsRef<Path>,
+    {
         create_dir_all(&self.build_dir)?;
         self.manifest.write_to(&self.build_dir)?;
 
@@ -79,17 +90,18 @@ impl ApkConfig {
             .unwrap_or_else(|| self.ndk.default_target_platform());
 
         if self.use_aapt2 {
-            let out_dir = self
-                .build_dir
-                .join(format!("compiled_{}_resource", self.manifest.package).as_str());
+            let out_dir = self.build_dir.join("resources");
             self.aapt2_compile(&out_dir)?;
-            self.aapt2_link(target_sdk_version)?;
+            self.aapt2_link(
+                &out_dir,
+                &gen_java_dir.as_ref().to_path_buf(),
+                target_sdk_version,
+            )?;
             if !self.manifest.application.debuggable.unwrap_or(false) {
                 self.aapt2_optimize()?;
             }
-            remove_file(out_dir)?;
         } else {
-            self.aapt_package(target_sdk_version)?;
+            self.aapt_package(&gen_java_dir, target_sdk_version)?;
         }
 
         Ok(UnalignedApk {
@@ -98,7 +110,14 @@ impl ApkConfig {
         })
     }
 
-    fn aapt_package(&self, target_sdk_version: u32) -> Result<(), NdkError> {
+    fn aapt_package<P>(&self, gen_java_dir: P, target_sdk_version: u32) -> Result<(), NdkError>
+    where
+        P: AsRef<Path>,
+    {
+        if self.resources.is_some() {
+            create_dir_all(&gen_java_dir)?;
+        }
+
         let mut aapt = self.build_tool(bin!("aapt"))?;
         println!("Packing apk resources......");
         aapt.arg("package")
@@ -107,6 +126,10 @@ impl ApkConfig {
             .arg(self.unaligned_apk())
             .arg("-M")
             .arg("AndroidManifest.xml")
+            .arg("-J")
+            .arg(gen_java_dir.as_ref())
+            .arg("--generate-dependencies")
+            .arg("--auto-add-overlay")
             .arg("-I")
             .arg(self.ndk.android_jar(target_sdk_version)?);
 
@@ -125,13 +148,24 @@ impl ApkConfig {
         if !aapt.status()?.success() {
             return Err(NdkError::CmdFailed(aapt));
         }
+
         Ok(())
     }
 
-    fn aapt2_compile(&self, out_dir: impl AsRef<OsStr>) -> Result<(), NdkError> {
-        let mut aapt = self.build_tool(bin!("aapt2"))?;
+    fn aapt2_compile<P>(&self, out_dir: P) -> Result<(), NdkError>
+    where
+        P: AsRef<Path>,
+    {
+        let _ = remove_dir_all(&out_dir);
+        create_dir_all(&out_dir)?;
+
+        let mut aapt = self.build_tool_utf8(bin!("aapt2"))?;
         println!("Compiling apk resources...");
-        aapt.arg("compile").arg("-o").arg(out_dir);
+        aapt.arg("compile").arg("-o").arg(out_dir.as_ref());
+
+        if self.disable_aapt_compression {
+            aapt.arg("--no-crunch");
+        }
 
         if let Some(res) = &self.resources {
             aapt.arg("--dir").arg(res);
@@ -140,11 +174,20 @@ impl ApkConfig {
         if !aapt.status()?.success() {
             return Err(NdkError::CmdFailed(aapt));
         }
+
         Ok(())
     }
 
-    fn aapt2_link(&self, target_sdk_version: u32) -> Result<(), NdkError> {
-        let mut aapt = self.build_tool(bin!("aapt2"))?;
+    fn aapt2_link<P>(
+        &self,
+        compiled_dir: P,
+        gen_java_dir: P,
+        target_sdk_version: u32,
+    ) -> Result<(), NdkError>
+    where
+        P: AsRef<Path>,
+    {
+        let mut aapt = self.build_tool_utf8(bin!("aapt2"))?;
         println!("Linking apk resources...");
         aapt.arg("link")
             .arg("-o")
@@ -152,24 +195,35 @@ impl ApkConfig {
             .arg("--manifest")
             .arg("AndroidManifest.xml")
             .arg("-I")
-            .arg(self.ndk.android_jar(target_sdk_version)?);
+            .arg(self.ndk.android_jar(target_sdk_version)?)
+            .arg("--java")
+            .arg(gen_java_dir.as_ref());
 
         if self.disable_aapt_compression {
-            aapt.arg("--no-compress").arg("-0").arg("");
+            aapt.arg("--no-compress");
         }
 
         if let Some(assets) = &self.assets {
             aapt.arg("-A").arg(assets);
         }
 
+        if compiled_dir.as_ref().exists()
+            && let Ok(mut files) = read_dir(compiled_dir)
+        {
+            while let Some(file) = files.next() {
+                aapt.arg(file?.path());
+            }
+        }
+
         if !aapt.status()?.success() {
             return Err(NdkError::CmdFailed(aapt));
         }
+
         Ok(())
     }
 
     fn aapt2_optimize(&self) -> Result<(), NdkError> {
-        let mut aapt = self.build_tool(bin!("aapt2"))?;
+        let mut aapt = self.build_tool_utf8(bin!("aapt2"))?;
         println!("Optimizing apk resources...");
         let path = self.unaligned_apk();
         let input_path = path.parent().unwrap().join(&self.manifest.package);
@@ -275,6 +329,7 @@ impl<'a> UnalignedApk<'a> {
         Ok(())
     }
 
+    //noinspection SpellCheckingInspection
     pub fn add_lib(&mut self, path: &Path, target: Target) -> Result<(), NdkError> {
         if !path.exists() {
             return Err(NdkError::PathNotFound(path.into()));
@@ -450,7 +505,11 @@ impl Apk {
         Ok(())
     }
 
-    pub fn start(&self, device_serial: Option<&str>, activity: Option<&str>) -> Result<(), NdkError> {
+    pub fn start(
+        &self,
+        device_serial: Option<&str>,
+        activity: Option<&str>,
+    ) -> Result<(), NdkError> {
         let mut adb = self.ndk.adb(device_serial)?;
         adb.arg("shell")
             .arg("am")
@@ -458,10 +517,10 @@ impl Apk {
             .arg("-a")
             .arg("android.intent.action.MAIN")
             .arg("-n");
-        
+
         // 使用提供的activity参数，如果没有提供，则使用默认的NativeActivity
         let activity_name = activity.unwrap_or("android.app.NativeActivity");
-        
+
         adb.arg(format!("{}/{}", self.package_name, activity_name));
 
         if !adb.status()?.success() {
@@ -471,6 +530,7 @@ impl Apk {
         Ok(())
     }
 
+    //noinspection SpellCheckingInspection
     pub fn uidof(&self, device_serial: Option<&str>) -> Result<u32, NdkError> {
         let mut adb = self.ndk.adb(device_serial)?;
         adb.arg("shell")

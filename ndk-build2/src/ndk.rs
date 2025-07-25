@@ -3,7 +3,7 @@ use {
     std::{
         collections::HashMap,
         env::var,
-        fs::{create_dir_all, read_dir, read_to_string},
+        fs::{create_dir_all, read_dir, read_to_string, write},
         path::{Path, PathBuf},
         process::Command,
     },
@@ -14,8 +14,10 @@ pub const DEFAULT_DEV_KEYSTORE_PASSWORD: &str = "android";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Ndk {
+    build_tools_path: PathBuf,
     user_home: PathBuf,
     ndk_path: PathBuf,
+    sdk_path: PathBuf,
     build_tools_version: String,
     build_tag: u32,
     platforms: Vec<u32>,
@@ -63,9 +65,9 @@ impl Ndk {
             }
         };
 
-        let build_tools_dir = sdk_path.join("build-tools");
-        let build_tools_version = read_dir(&build_tools_dir)
-            .or(Err(NdkError::PathNotFound(build_tools_dir)))?
+        let build_tools_path = sdk_path.join("build-tools");
+        let build_tools_version = read_dir(&build_tools_path)
+            .or(Err(NdkError::PathNotFound(build_tools_path.clone())))?
             .filter_map(|path| path.ok())
             .filter(|path| path.path().is_dir())
             .filter_map(|path| path.file_name().into_string().ok())
@@ -124,8 +126,10 @@ impl Ndk {
         }
 
         Ok(Self {
+            build_tools_path,
             user_home,
             ndk_path,
+            sdk_path,
             build_tools_version,
             build_tag,
             platforms,
@@ -148,29 +152,44 @@ impl Ndk {
         &self.platforms
     }
 
-    pub fn build_tool(&self, tool: &str) -> Result<Command, NdkError> {
-        let Some(sdk_path) = android_build::android_sdk() else {
-            return Err(NdkError::SdkNotFound);
-        };
+    pub fn android_sdk(&self) -> &Path {
+        &self.sdk_path
+    }
 
-        let path = sdk_path
-            .join("build-tools")
-            .join(&self.build_tools_version)
-            .join(tool);
+    pub fn build_tools(&self) -> PathBuf {
+        self.build_tools_path.join(&self.build_tools_version)
+    }
+
+    pub fn build_tool(&self, tool: &str) -> Result<Command, NdkError> {
+        let path = self.build_tools().join(tool);
         if !path.exists() {
             return Err(NdkError::CmdNotFound(tool.to_string()));
         }
+
         Ok(Command::new(dunce::canonicalize(path)?))
     }
 
-    pub fn platform_tool_path(&self, tool: &str) -> Result<PathBuf, NdkError> {
-        let Some(sdk_path) = android_build::android_sdk() else {
-            return Err(NdkError::SdkNotFound);
-        };
-        let path = sdk_path.join("platform-tools").join(tool);
+    //noinspection SpellCheckingInspection
+    pub fn build_tool_utf8(&self, tool: &str) -> Result<Command, NdkError> {
+        let path = self.build_tools().join(tool);
         if !path.exists() {
             return Err(NdkError::CmdNotFound(tool.to_string()));
         }
+        let mut cmd = Command::new("cmd");
+        cmd.arg("/C").arg(format!(
+            "chcp 65001 && {}",
+            dunce::canonicalize(path)?.display()
+        ));
+
+        Ok(cmd)
+    }
+
+    pub fn platform_tool_path(&self, tool: &str) -> Result<PathBuf, NdkError> {
+        let path = self.android_sdk().join("platform-tools").join(tool);
+        if !path.exists() {
+            return Err(NdkError::CmdNotFound(tool.to_string()));
+        }
+
         Ok(dunce::canonicalize(path)?)
     }
 
@@ -194,15 +213,14 @@ impl Ndk {
     }
 
     pub fn platform_dir(&self, platform: u32) -> Result<PathBuf, NdkError> {
-        let Some(sdk_path) = android_build::android_sdk() else {
-            return Err(NdkError::SdkNotFound);
-        };
-        let dir = sdk_path
+        let dir = self
+            .android_sdk()
             .join("platforms")
             .join(format!("android-{}", platform));
         if !dir.exists() {
             return Err(NdkError::PlatformNotFound(platform));
         }
+
         Ok(dir)
     }
 
@@ -212,6 +230,7 @@ impl Ndk {
         else {
             return Err(NdkError::PlatformNotFound(api_level));
         };
+
         Ok(android_jar)
     }
 
@@ -257,6 +276,7 @@ impl Ndk {
         if !toolchain_dir.exists() {
             return Err(NdkError::PathNotFound(toolchain_dir));
         }
+
         Ok(toolchain_dir)
     }
 
@@ -337,7 +357,7 @@ impl Ndk {
         let abi = self.detect_abi(device_serial)?;
         let jni_dir = launch_dir.as_ref().join("jni");
         create_dir_all(&jni_dir)?;
-        std::fs::write(
+        write(
             jni_dir.join("Android.mk"),
             format!("APP_ABI={}\nTARGET_OUT=\n", abi.android_abi()),
         )?;
@@ -354,12 +374,14 @@ impl Ndk {
             .arg(launch_activity)
             .current_dir(launch_dir)
             .status()?;
+
         Ok(())
     }
 
     pub fn android_user_home(&self) -> Result<PathBuf, NdkError> {
         let android_user_home = self.user_home.clone();
         create_dir_all(&android_user_home)?;
+
         Ok(android_user_home)
     }
 
@@ -373,6 +395,7 @@ impl Ndk {
                 return Ok(Command::new(keytool));
             }
         }
+
         Err(NdkError::CmdNotFound("keytool".to_string()))
     }
 
@@ -406,6 +429,7 @@ impl Ndk {
                 return Err(NdkError::CmdFailed(keytool));
             }
         }
+
         Ok(Key { path, password })
     }
 
@@ -419,6 +443,7 @@ impl Ndk {
         if !sysroot_lib_dir.exists() {
             return Err(NdkError::PathNotFound(sysroot_lib_dir));
         }
+
         Ok(sysroot_lib_dir)
     }
 
