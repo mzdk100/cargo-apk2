@@ -1,247 +1,291 @@
-# cargo apk2
+# cargo-apk2
 
 [![Actions Status](https://github.com/mzdk100/cargo-apk2/actions/workflows/rust.yml/badge.svg)](https://github.com/mzdk100/cargo-apk2/actions)
-[![最新版本](https://img.shields.io/crates/v/cargo-apk.svg?logo=rust)](https://crates.io/crates/cargo-apk2)
+[![Latest version](https://img.shields.io/crates/v/cargo-apk.svg?logo=rust)](https://crates.io/crates/cargo-apk2)
 [![MSRV](https://img.shields.io/badge/rustc-1.86.0+-ab6000.svg)](https://blog.rust-lang.org/2025/04/03/Rust-1.86.0/)
-[![文档](https://docs.rs/cargo-apk2/badge.svg)](https://docs.rs/cargo-apk2)
-[![仓库](https://tokei.rs/b1/github/rust-mobile/cargo-apk)](https://github.com/mzdk100/cargo-apk2)
+[![Documentation](https://docs.rs/cargo-apk2/badge.svg)](https://docs.rs/cargo-apk2)
+[![Repository](https://tokei.rs/b1/github/mzdk100/cargo-apk2)](https://github.com/mzdk100/cargo-apk2)
 ![MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-green.svg)
 
-使用Rust语言构建安卓应用的工具，此工具的前身是cargo-apk，由于他已经被标记弃用状态，所以创建了cargo-apk2这个项目。
-此工具打包apk非常简单高效，不需要配置Gradle的环境，因此非常适合刚接触Rust语言的新手。
+English | [中文](https://gitcode.com/mzdk100/cargo-apk2/blob/main/README-ZH.md)
 
-## 安装
+Tool for creating Android packages from native Rust crates. We have created this tool because the predecessor of this tool ([`cargo-apk`]) has stagnated for over a year at the time of writing this documentation.
 
-1. 直接从 crates.io 上获取:
-   ```shell
-   cargo install cargo-apk2
-   ```
-2. 从源代码:
-   ```shell
-   git clone https://github.com/mzdk100/cargo-apk2
-   cargo install --path cargo-apk2/
-   ```
+This tool requires minimal setup and tooling, without the requirement of Gradle configuration. Ideal for apps that provide a [`NativeActivity`] via [`android-activity`] and [`ndk`].
 
-## 支持的命令
+In addition to features available in `cargo-apk`, this tool supports compiling sources of JVM-based languages into DEX data to be packaged in the APK file; declaration of multiple activities and even services are supported.
 
-- `build`: 编译当前包
-- `run`: 运行本地包的二进制文件或示例
-- `gdb`: 启动连接到 adb 设备的 gdb 会话并加载符号
+[`cargo-apk`]: https://crates.io/crates/cargo-apk
+[`NativeActivity`]: https://developer.android.com/reference/android/app/NativeActivity
+[`android-activity`]: https://crates.io/crates/android-activity
+[`ndk`]: https://crates.io/crates/ndk
+
+## Installation
+
+From crates.io:
+
+```shell
+cargo install cargo-apk2
+```
+
+From locally downloaded or cloned source:
+
+```shell
+git clone https://github.com/mzdk100/cargo-apk2
+cargo install --path cargo-apk2/
+```
+
+## Crate configuration
+
+Android and thus `cargo-apk` require the [Cargo Target] to be a Shared Library, corresponding to Rust's `cdylib` `crate-type`.  For the sole library in a crate, configure this as follows in `Cargo.toml`:
+
+```toml
+[lib]
+# Optionally supports a different library location using `path = "..."`
+crate-type = ["cdylib"]
+```
+
+The source repository of this tool provides some example configurations.
+
+[Cargo Target]: https://doc.rust-lang.org/cargo/reference/cargo-targets.html
+
+## Commands
+
+- `build`: Compile the selected crate and package it into an APK
+- `run`: Compile, install and run the selected crate/package on an attached Android device via `adb`
+- `gdb`: Start a gdb session on an attached Android device via `adb`, with symbols loaded
 
 ## Manifest
 
-`cargo` 支持 `metadata` 表，用于配置 `cargo apk2` 等外部工具。
-`cargo apk2` 在 `[package.metadata.android]` 下支持以下配置选项：
+`cargo apk` reads additional configuration from Cargo's `[package.metadata]` table. The following configuration options are supported by `cargo apk` under `[package.metadata.android]`:
 
 ```toml
 [package.metadata.android]
-# 使用aapt2构建工具来编译资源
+# Use `aapt2` instead of `aapt` for compiling application resources.
 use_aapt2 = true
 
-# 指定清单的包属性。
+# Specifies the package property of the manifest.
+# See https://developer.android.com/guide/topics/manifest/manifest-element#package
 package = "com.foo.bar"
 
-# 指定要构建的目标数组。
+# Specifies the array of targets to build for.
 build_targets = [ "armv7-linux-androideabi", "aarch64-linux-android", "i686-linux-android", "x86_64-linux-android" ]
 
-# 应用程序的资源文件夹路径。
-# 如果未指定，资源将不会包含在APK中。
+# Path to your application's resources folder.
+# If not specified, resources will not be included in the APK.
 resources = "path/to/resources_folder"
 
-# 应用程序资产文件夹的路径。
-# 如果未指定，资产将不会包含在APK中。
+# Path to the folder containing your application's assets.
+# If not specified, assets will not be included in the APK.
 assets = "path/to/assets_folder"
 
-# Java源代码的文件夹路径。
-# 如果未指定，则有可能跳过Java编译步骤。
+# Directory path of Java source files.
+# If not specified, the Java compilation process might be skipped.
 java_sources = "path/to/java"
 
-# Kotlin源代码的文件夹路径。
-# 如果未指定，则会跳过Kotlin编译步骤。
+# Directory path of Kotlin source files.
+# If not specified, the Kotlin compilation process will be skipped.
 kotlin_sources = "path/to/kotlin"
 
-# Groovy源代码的文件夹路径。
-# 如果未指定，则会跳过Groovy编译步骤。
-groovy_sources = "path/to/groovy"
+# Directory path of Groovy source files.
+# If not specified, the Groovy compilation process will be skipped.
+kotlin_sources = "path/to/groovy"
 
-# Scala源代码的文件夹路径。
-# 如果未指定，则会跳过Scala编译步骤。
-scala_sources = "path/to/scala"
+# Directory path of Scala source files.
+# If not specified, the Scala compilation process will be skipped.
+kotlin_sources = "path/to/scala"
 
-# 最终APK文件的名称。默认为包名。
+# Name for final APK file.
+# Defaults to package name.
 apk_name = "myapp"
 
-# `default`（或未指定）- 如果存在，调试符号不会被特别处理。
+# `default` (or unspecified) - Debug symbols, if they exist, are not treated
+#                              specially.
 #
-# `strip`  - 在将共享库复制到APK之前，从共享库中剥离调试符号。
+# `strip`                    - Debug symbols are stripped from the shared
+#                              libraries before being copied into the APK.
 #
-# `split`  - 功能与`strip`相同，不同之处在于调试符号与剥离的共享库一起写入 apk 输出目录，并带有`.dwarf`扩展名。
+# `split`                    - Functions the same as `strip`, except the debug
+#                              symbols are written to the apk output directory
+#                              alongside the stripped shared libraries, with
+#                              a `.dwarf` extension.
 #
-# 注意，`strip`和`split`选项只有在`.so`文件中存在调试符号时才会生效，
-# 启用https://doc.rust-lang.org/cargo/reference/profiles.html#strip 或
+# Note that the `strip` and `split` options will only have an effect if
+# debug symbols are present in the `.so` file(s) produced by your build, enabling
+# https://doc.rust-lang.org/cargo/reference/profiles.html#strip or
 # https://doc.rust-lang.org/cargo/reference/profiles.html#split-debuginfo
-# 在您的cargo清单中可以导致调试符号不再存在于`.so`文件中。
+# in your cargo manifest can cause debug symbols to no longer be present
+# in the `.so`.
 strip = "default"
 
-# 包含要在运行时动态加载的额外共享库的文件夹。
-# 根据指定的build_targets，匹配`libs_folder/${android_abi}/*.so`的文件会被添加到APK中。
+# Folder containing extra shared libraries intended to be dynamically loaded at runtime.
+# Files matching `libs_folder/${android_abi}/*.so` are added to the apk
+# according to the specified build_targets.
 runtime_libs = "path/to/libs_folder"
 
-# 与其他应用共享的Linux用户ID的名称。默认情况下，Android为每个应用分配一个唯一的用户ID。
-# 但是，如果此属性为两个或更多应用设置为相同的值，它们将共享相同的ID，前提是它们的证书集相同。
-# 具有相同用户ID的应用可以访问彼此的数据，并且如果需要，可以在同一进程中运行。
+# The name of a Linux user ID that is shared with other apps. By
+# default, Android assigns each app its own unique user ID. However, if
+# this attribute is set to the same value for two or more apps, they all
+# share the same ID, provided that their certificate sets are identical.
+# Apps with the same user ID can access each other's data and, if
+# desired, run in the same process.
 shared_user_id = "my.shared.user.id"
 
-# 默认为`dev`配置文件的`$HOME/.android/debug.keystore`。仅当此文件不存在时才会生成新的debug.keystore。
-# 其他配置文件永远不会自动生成keystore。
+# Defaults to `$HOME/.android/debug.keystore` for the `dev` profile. Will ONLY
+# generate a new debug.keystore if this file does NOT exist. A keystore is never
+# auto-generated for other profiles.
 #
-# keystore路径可以是绝对路径，也可以是相对于Cargo.toml文件的相对路径。
+# The keystore path can be absolute, or relative to the Cargo.toml file.
 #
-# 可以设置环境变量`CARGO_APK_<PROFILE>_KEYSTORE`和`CARGO_APK_<PROFILE>_KEYSTORE_PASSWORD`，
-# 分别指定keystore路径和keystore密码。配置文件部分遵循与`<cfg>`相同的规则，
-# 它是配置文件名称的大写形式，其中`-`被替换为`_`。
+# The environment variables `CARGO_APK_<PROFILE>_KEYSTORE` and
+# `CARGO_APK_<PROFILE>_KEYSTORE_PASSWORD` can be set to a keystore path
+# and keystore password respectively. The profile portion follows the same rules
+# as `<cfg>`, it is the uppercased profile name with `-` replaced with `_`.
 #
-# 如果存在，它们将优先于清单中的签名信息。
-[package.metadata.android.signing._profile_]
+# If present they take precedence over the signing information in the manifest.
+[package.metadata.android.signing.<profile>]
 path = "relative/or/absolute/path/to/my.keystore"
 keystore_password = "android"
 
-# 参见 https://developer.android.com/guide/topics/manifest/uses-sdk-element
+# See https://developer.android.com/guide/topics/manifest/uses-sdk-element
 #
-# 默认的`min_sdk_version`为24，`target_sdk_version`为36（如果检测到的NDK不支持，则为较低的版本）。
+# Defaults to a `min_sdk_version` of `24` and `target_sdk_version` of `36`
+# (or lower if the detected NDK doesn't support this).
 [package.metadata.android.sdk]
 min_sdk_version = 24
 target_sdk_version = 36
 max_sdk_version = 36
 
-# 参见 https://developer.android.com/guide/topics/manifest/uses-feature-element
+# See https://developer.android.com/guide/topics/manifest/uses-feature-element
 #
-# 注意：可以有多个.uses_feature条目。
+# Note: there can be multiple .uses_feature entries.
 [[package.metadata.android.uses_feature]]
 name = "android.hardware.vulkan.level"
 required = true
 version = 1
 
-# 参见 https://developer.android.com/guide/topics/manifest/uses-permission-element
+# See https://developer.android.com/guide/topics/manifest/uses-permission-element
 #
-# 注意：可以有多个.uses_permission条目。
+# Note: there can be multiple .uses_permission entries.
 [[package.metadata.android.uses_permission]]
 name = "android.permission.WRITE_EXTERNAL_STORAGE"
 max_sdk_version = 36
 
-# 参见 https://developer.android.com/guide/topics/manifest/queries-element#provider
+# See https://developer.android.com/guide/topics/manifest/queries-element#provider
 [[package.metadata.android.queries.provider]]
 authorities = "org.khronos.openxr.runtime_broker;org.khronos.openxr.system_runtime_broker"
-# 注意：`name`属性通常不是查询提供者的必需属性，但作为解决aapt错误缺少`android:name`属性的
-# 工作方法是非可选的。如果/当cargo-apk迁移到aapt2时，它将变为可选。
+# Note: The `name` attribute is normally not required for a queries provider, but is non-optional
+# as a workaround for aapt throwing errors about missing `android:name` attribute.
+# This is optional when aapt2 is used.
 name = "org.khronos.openxr"
 
-# 参见 https://developer.android.com/guide/topics/manifest/queries-element#intent
+# See https://developer.android.com/guide/topics/manifest/queries-element#intent
 [[package.metadata.android.queries.intent]]
 actions = ["android.intent.action.SEND"]
 
-# 参见 https://developer.android.com/guide/topics/manifest/queries-element#intent
-# 注意：可以有多个.data条目。
+# See https://developer.android.com/guide/topics/manifest/queries-element#intent
+# Note: there can be several .data entries.
 [[package.metadata.android.queries.intent.data]]
 mime_type = "image/jpeg"
 
-# 参见 https://developer.android.com/guide/topics/manifest/queries-element#package
+# See https://developer.android.com/guide/topics/manifest/queries-element#package
 [[package.metadata.android.queries.package]]
 name = "org.freedesktop.monado.openxr_runtime.in_process"
 
-# 参见 https://developer.android.com/guide/topics/manifest/application-element
+# See https://developer.android.com/guide/topics/manifest/application-element
 [package.metadata.android.application]
 
-# 参见 https://developer.android.com/guide/topics/manifest/application-element#debug
+# See https://developer.android.com/guide/topics/manifest/application-element#debug
 #
-# 默认为false。
+# Defaults to false.
 debuggable = false
 
-# 参见 https://developer.android.com/guide/topics/manifest/application-element#theme
+# See https://developer.android.com/guide/topics/manifest/application-element#theme
 #
-# 示例显示将应用程序的主题设置为全屏。
+# Example shows setting the theme of an application to fullscreen.
 theme = "@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen"
 
-# 应用程序的任何mipmap级别的图标虚拟路径。
-# 如果未指定，图标将不会包含在APK中。
+# Virtual path your application's icon for any mipmap level.
+# If not specified, an icon will not be included in the APK.
 icon = "@mipmap/ic_launcher"
 
-# 参见 https://developer.android.com/guide/topics/manifest/application-element#label
+# See https://developer.android.com/guide/topics/manifest/application-element#label
 #
-# 默认为编译后的工件名称。
+# User-readable application name. Defaults to the compiled artifact's name.
 label = "Application Name"
 
-# 参见 https://developer.android.com/guide/topics/manifest/application-element#extractNativeLibs
+# See https://developer.android.com/guide/topics/manifest/application-element#extractNativeLibs
 extract_native_libs = true
 
-# 参见 https://developer.android.com/guide/topics/manifest/application-element#usesCleartextTraffic
+# See https://developer.android.com/guide/topics/manifest/application-element#usesCleartextTraffic
 uses_cleartext_traffic = true
 
-# 参见 https://developer.android.com/guide/topics/manifest/meta-data-element
+# See https://developer.android.com/guide/topics/manifest/meta-data-element
 #
-# 注意：可以有多个.meta_data条目。
+# Note: there can be several .meta_data entries.
 [[package.metadata.android.application.meta_data]]
 name = "com.samsung.android.vr.application.mode"
 value = "vr_only"
 
-# 支持多个activity元素（应至少有一个），cargo-apk2默认不会生成任何隐含Activity
-# 参见 https://developer.android.com/guide/topics/manifest/activity-element
+# Supports multiple `activity` elements (there should be at least one); by default
+# `cargo-apk2` does not generate any activity implicitly.
+# See https://developer.android.com/guide/topics/manifest/activity-element
 [[package.metadata.android.application.activity]]
 
-# 参见 https://developer.android.com/guide/topics/manifest/activity-element#config
+# See https://developer.android.com/guide/topics/manifest/activity-element#config
 #
-# 默认为"orientation|keyboardHidden|screenSize"。
+# Defaults to "orientation|keyboardHidden|screenSize".
 config_changes = "orientation"
 
-# 参见 https://developer.android.com/guide/topics/manifest/activity-element#label
+# See https://developer.android.com/guide/topics/manifest/activity-element#label
 #
-# 默认为应用程序的标签。
+# Defaults to the application's label.
 label = "Activity Name"
 
-# 参见 https://developer.android.com/guide/topics/manifest/activity-element#lmode
+# See https://developer.android.com/guide/topics/manifest/activity-element#lmode
 #
-# 默认为"standard"。
+# Defaults to "standard".
 launch_mode = "singleTop"
 
-# 参见 https://developer.android.com/guide/topics/manifest/activity-element#screen
+# See https://developer.android.com/guide/topics/manifest/activity-element#screen
 #
-# 默认为"unspecified"。
+# Defaults to "unspecified".
 orientation = "landscape"
 
-# 参见 https://developer.android.com/guide/topics/manifest/activity-element#exported
+# See https://developer.android.com/guide/topics/manifest/activity-element#exported
 #
-# 默认未设置，或当目标Android >= 31（S及更高版本）时为true。
+# Unset by default, or true when targeting Android >= 31 (S and up).
 exported = true
 
-# 参见 https://developer.android.com/guide/topics/manifest/activity-element#resizeableActivity
+# See https://developer.android.com/guide/topics/manifest/activity-element#resizeableActivity
 #
-# 默认在Android >= 24上为true，对较早的API级别无效果。
+# Defaults to true on Android >= 24, no effect on earlier API levels
 resizeable_activity = false
 
-# 参见 https://developer.android.com/guide/topics/manifest/activity-element#always
+# See https://developer.android.com/guide/topics/manifest/activity-element#always
 always_retain_task_state = true
 
-# 参见 https://developer.android.com/guide/topics/manifest/meta-data-element
+# See https://developer.android.com/guide/topics/manifest/meta-data-element
 #
-# 注意：可以有多个meta_data条目。
+# Note: there can be several .meta_data entries.
 [[package.metadata.android.application.activity.meta_data]]
 name = "com.oculus.vr.focusaware"
 value = "true"
 
-# 参见 https://developer.android.com/guide/topics/manifest/intent-filter-element
+# See https://developer.android.com/guide/topics/manifest/intent-filter-element
 #
-# 注意：可以有多个.intent_filter条目。
+# Note: there can be several .intent_filter entries.
 [[package.metadata.android.application.activity.intent_filter]]
-# 参见 https://developer.android.com/guide/topics/manifest/action-element
+# See https://developer.android.com/guide/topics/manifest/action-element
 actions = ["android.intent.action.VIEW", "android.intent.action.WEB_SEARCH"]
-# 参见 https://developer.android.com/guide/topics/manifest/category-element
+# See https://developer.android.com/guide/topics/manifest/category-element
 categories = ["android.intent.category.DEFAULT", "android.intent.category.BROWSABLE"]
 
-# 参见 https://developer.android.com/guide/topics/manifest/data-element
+# See https://developer.android.com/guide/topics/manifest/data-element
 #
-# 注意：可以有多个.data条目。
-# 注意：未指定属性将排除在最终数据规范之外。
+# Note: there can be several .data entries.
+# Note: not specifying an attribute excludes it from the final data specification.
 [[package.metadata.android.application.activity.intent_filter.data]]
 scheme = "https"
 host = "github.com"
@@ -250,59 +294,79 @@ path = "/rust-windowing/android-ndk-rs/tree/master/cargo-apk"
 path_prefix = "/rust-windowing/"
 mime_type = "image/jpeg"
 
-# 支持多个service元素，同样支持intent-filter
-# 参见 https://developer.android.com/guide/topics/manifest/service-element
+# Supports multiple `service` elements, and they can have intent filters as well.
+# See https://developer.android.com/guide/topics/manifest/service-element
 [[package.metadata.android.application.service]]
-# 实现服务的 Service 子类的名称。这是一个完全限定的类名称，例如 "com.example.project.RoomService"。不过，作为一种简写形式，如果名称的第一个字符是句点（例如 ".RoomService"），则会将其附加到 <manifest> 元素中指定的软件包名称。
-# 发布应用后，除非您已设置 android:exported="false"，否则请勿更改此名称。没有默认值。必须指定此名称。
+
+# The name of the Service subclass that implements the service. This is a fully qualified
+# class name, such as "com.example.project.RoomService". However, as a shorthand, if the
+# first character of the name is a period, such as ".RoomService", it is appended to the
+# package name specified in the <manifest> element.
+# Once you publish your application, don't change this name, unless you set
+# `android:exported="false"`. There is no default. The name must be specified. 
 name = ".MyService"
 
-# 确定系统是否可以实例化服务。如果可以实例化，则设为 "true"，否则设为 "false"。默认值为 "true"。
-# <application> 元素具有自己的 enabled 属性，该属性适用于所有应用组件，包括服务。
-# <application> 和 <service> 属性必须都设为 "true"（这正是它们两者的默认设置），才会启用服务。如果其中任一 属性设为 "false"，则表示服务已停用；无法对其进行实例化。
+# Whether the service can be instantiated by the system. It's "true" if it can be, and
+# "false" if not. The default value is "true".
+# The <application> element has its own enabled attribute that applies to all application
+# components, including services. The <application> and <service> attributes must both be
+# "true", as they both are by default, for the service to be enabled. If either is "false",
+# the service is disabled and can't be instantiated. 
 enabled = true
 
-# 实体启动服务或绑定到服务所需的权限的名称。如果没有向 startService()、bindService() 或 stopService() 的调用方授予此权限，该方法将不起作用，且系统不会将 Intent 对象传送给服务。
-# 如果未设置该属性，则对服务应用由 <application> 元素的 permission 属性所设置的权限。如果二者均未设置，则服务不受权限保护。
+# The name of a permission that an entity needs in order to launch the service or bind to it.
+# If a caller of startService(), bindService(), or stopService() isn't granted this permission,
+# the method doesn't work and the Intent object isn't delivered to the service.
+# If this attribute isn't set, the permission set by the <application> element's permission
+# attribute applies to the service. If neither attribute is set, the service isn't protected
+# by a permission. 
 permission = "android.permission.BIND_JOB_SERVICE"
 
-# 运行服务的进程的名称。通常，应用的所有组件都会在为应用创建的默认进程中运行。它与应用软件包的名称相同。
-# <application> 元素的 process 属性可以为所有组件设置不同的默认值。不过，组件可以使用自己的 process 属性替换默认属性，从而允许您跨多个进程分布应用。
-# 如果为此属性分配的名称以英文冒号 (:) 开头，则系统会在需要时创建应用专用的新进程，并且服务会在该进程中运行。
-# 如果进程名称以小写字符开头，则服务将在采用该名称的全局进程中运行，前提是它具有相应权限。这样，不同应用中的组件就可以共享进程，从而减少资源使用量。
+# The name of the process where the service runs. Normally, all components of an application
+# run in the default process created for the application. It has the same name as the
+# application package. The <application> element's process attribute can set a different
+# default for all components. But a component can override the default with its own process
+# attribute, letting you spread your application across multiple processes.
+# If the name assigned to this attribute begins with a colon (:), a new process, private to
+# the application, is created when it's needed and the service runs in that process.
+# If the process name begins with a lowercase character, the service runs in a global process
+# of that name, provided that it has permission to do so. This lets components in different
+# applications share a process, reducing resource usage. 
 process = ":my_service"
 
+# See https://developer.android.com/guide/topics/manifest/meta-data-element
 [[package.metadata.android.application.service.meta_data]]
 name = "android.accessibilityservice"
-# 引用xml资源
+# References a XML resource.
 resource = "@xml/accessibilityservice"
 
-# 通过`adb reverse`设置反向端口转发，这意味着如果Android设备连接到`localhost`上的端口`1338`，
-# 它将被路由到主机上的端口`1338`。源和目标端口可以不同，请参阅`adb`帮助页面以获取可能的配置。
+# Set up reverse port forwarding through `adb reverse`, meaning that if the
+# Android device connects to `localhost` on port `1338` it will be routed to
+# the host on port `1338` instead. Source and destination ports can differ,
+# see the `adb` help page for possible configurations.
 [package.metadata.android.reverse_port_forward]
 "tcp:1338" = "tcp:1338"
 ```
 
+If a manifest attribute is not supported by `cargo apk2`, feel free to create a PR that adds the missing attribute.
 
-如果“cargo apk2”不支持清单属性，请随意创建 PR 来添加缺失的属性。
+## Environmental variables provided by this tool
 
-## 环境变量说明
+`cargo-apk2` sets environmental variables listed below to be used in `build.rs` or some custom script.
 
-cargo-apk2 在构建过程中会自动设置以下环境变量，方便在 build.rs 或自定义脚本中使用：
+- `CARGO_APK2_APK_NAME`：File name of the currently generating APK.
+- `CARGO_APK2_PACKAGE`：Package name.
+- `CARGO_APK2_ASSETS_DIR`：Absolute path of the assets directory.
+- `CARGO_APK2_RESOURCES_DIR`：Absolute path of the resources directory.
+- `CARGO_APK2_CLASSES_DIR`：Directory storing compiled Java classes.
+- `CARGO_APK2_RUNTIME_LIBS_DIR`：Directory storing runtime (dynamic) libraries.
+- `CARGO_APK2_JAVA_HOME`：Root directory of the Java environment.
+- `CARGO_APK2_SDK_HOME`：Root directory of the Android SDK.
+- `CARGO_APK2_ANDROID_JAR`：Path of `android.jar` corresponding to the current `targetSdkVersion`.
+- `CARGO_APK2_PLATFORM_DIR`：Path of `platforms/android-<api>` corresponding to the current `targetSdkVersion`.
+- `CARGO_APK2_BUILD_TOOLS_VERSION`：Version of the Android Build Tools currently being used.
+- `CARGO_APK2_MIN_SDK_VERSION`：`minSdkVersion`.
+- `CARGO_APK2_TARGET_SDK_VERSION`：`targetSdkVersion`.
+- `CARGO_APK2_ARTIFACT`：Output path of the main dynamic library.
 
-- `CARGO_APK2_APK_NAME`：当前生成的 APK 文件名。
-- `CARGO_APK2_PACKAGE`：APK 的包名。
-- `CARGO_APK2_ASSETS_DIR`：assets 目录的绝对路径。
-- `CARGO_APK2_RESOURCES_DIR`：resources 目录的绝对路径。
-- `CARGO_APK2_CLASSES_DIR`：用于存放编译后的 Java 类文件目录。
-- `CARGO_APK2_RUNTIME_LIBS_DIR`：运行时动态库目录。
-- `CARGO_APK2_JAVA_HOME`：Java 环境根目录。
-- `CARGO_APK2_SDK_HOME`：Android SDK 根目录。
-- `CARGO_APK2_ANDROID_JAR`：当前 targetSdkVersion 对应的 android.jar 路径。
-- `CARGO_APK2_PLATFORM_DIR`：当前 targetSdkVersion 对应的 platform 目录。
-- `CARGO_APK2_BUILD_TOOLS_VERSION`：当前使用的Android Build Tools 版本号。
-- `CARGO_APK2_MIN_SDK_VERSION`：minSdkVersion。
-- `CARGO_APK2_TARGET_SDK_VERSION`：targetSdkVersion。
-- `CARGO_APK2_ARTIFACT`：动态库输出路径。
-
-这些变量可用于自动化脚本、资源处理、Java集成等高级场景。
+These variables can be used in circumstances like automation scripting, resource processing, and Java integration.
