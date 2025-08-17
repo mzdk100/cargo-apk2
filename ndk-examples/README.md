@@ -1,17 +1,19 @@
-# ndk-示例
+# ndk-examples
 
-展示库不同部分的示例集合。
+English | [中文](https://gitcode.com/mzdk100/cargo-apk2/blob/main/ndk-examples/README-ZH.md)
 
-## 示例
+Collection of examples showing different parts of the libraries.
 
-为了查看示例应用程序在控制台中执行的日志：
+## Examples
+
+In order to see logs of the sample apps execute in a console:
 ```shell
 adb logcat RustStdoutStderr:D '*:S'
 ```
 
 ### hello_world
 
-在控制台中打印“hello world”
+Prints `hello world` in the console:
 
 ```shell
 cargo apk2 run --features hello_world
@@ -19,7 +21,7 @@ cargo apk2 run --features hello_world
 
 ### jni_audio
 
-在控制台中打印输出音频设备
+Prints output audio devices in the console:
 
 ```shell
 cargo apk2 run --features jni_audio

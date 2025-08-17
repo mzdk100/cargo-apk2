@@ -12,12 +12,14 @@ fn android_main(_app: AndroidApp) {
 const GET_DEVICES_OUTPUTS: jni::sys::jint = 2;
 
 fn enumerate_audio_devices() -> Result<(), Box<dyn std::error::Error>> {
+    // Create a VM for executing Java calls
     // 创建用于执行 Java 调用的 VM
     let ctx = ndk_context::android_context();
     let vm = unsafe { jni::JavaVM::from_raw(ctx.vm().cast()) }?;
     let context = unsafe { JObject::from_raw(ctx.context().cast()) };
     let mut env = vm.attach_current_thread()?;
 
+    // Query the global Audio Service
     // 查询全局音频服务
     let class_ctxt = env.find_class("android/content/Context")?;
     let audio_service = env.get_static_field(class_ctxt, "AUDIO_SERVICE", "Ljava/lang/String;")?;
@@ -33,6 +35,7 @@ fn enumerate_audio_devices() -> Result<(), Box<dyn std::error::Error>> {
         )?
         .l()?;
 
+    // Enumerate output devices
     // 枚举输出设备
     let devices = env.call_method(
         audio_manager,
@@ -48,6 +51,7 @@ fn enumerate_audio_devices() -> Result<(), Box<dyn std::error::Error>> {
     for i in 0..len {
         let device = env.get_object_array_element(&device_array, i)?;
 
+        // Collect device information
         // 收集设备信息
         // See https://developer.android.com/reference/android/media/AudioDeviceInfo
         let product_name: String = {
