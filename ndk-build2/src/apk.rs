@@ -76,7 +76,7 @@ impl ApkConfig {
         self.build_dir.join(format!("{}.apk", self.apk_name))
     }
 
-    pub fn create_apk<P>(&self, gen_java_dir: P) -> Result<UnalignedApk, NdkError>
+    pub fn create_apk<P>(&self, gen_java_dir: P) -> Result<UnalignedApk<'_>, NdkError>
     where
         P: AsRef<Path>,
     {

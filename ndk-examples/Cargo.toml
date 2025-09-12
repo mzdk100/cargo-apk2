@@ -9,25 +9,15 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
+
+[target.'cfg(target_os = "android")'.dependencies]
 android-activity = {workspace = true, features = ["native-activity"]}
 android_logger.workspace = true
+jni = {workspace = true, optional = true}
+libc = {workspace = true, optional = true }
 log.workspace = true
-
-[dependencies.ndk-context]
-workspace = true
-optional = true
-
-[dependencies.jni]
-workspace = true
-optional = true
-
-[dependencies.ndk]
-workspace = true
-optional = true
-
-[dependencies.libc]
-optional = true
-workspace = true
+ndk = {workspace = true, optional = true}
+ndk-context = {workspace = true, optional = true}
 
 [features]
 hello_world = ["ndk/api-level-33"]

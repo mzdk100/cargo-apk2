@@ -1,6 +1,6 @@
 # ndk-examples
 
-English | [中文](https://gitcode.com/mzdk100/cargo-apk2/blob/main/ndk-examples/README-ZH.md)
+English | [中文](https://github.com/mzdk100/cargo-apk2/blob/main/ndk-examples/README-ZH.md)
 
 Collection of examples showing different parts of the libraries.
 

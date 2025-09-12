@@ -8,7 +8,7 @@
 ![MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-green.svg)
 
-English | [中文](https://gitcode.com/mzdk100/cargo-apk2/blob/main/README-ZH.md)
+English | [中文](https://github.com/mzdk100/cargo-apk2/blob/main/cargo-apk2/README-ZH.md)
 
 Tool for creating Android packages from native Rust crates. We have created this tool because the predecessor of this tool ([`cargo-apk`]) has stagnated for over a year at the time of writing this documentation.
 
@@ -90,11 +90,11 @@ kotlin_sources = "path/to/kotlin"
 
 # Directory path of Groovy source files.
 # If not specified, the Groovy compilation process will be skipped.
-kotlin_sources = "path/to/groovy"
+groovy_sources = "path/to/groovy"
 
 # Directory path of Scala source files.
 # If not specified, the Scala compilation process will be skipped.
-kotlin_sources = "path/to/scala"
+scala_sources = "path/to/scala"
 
 # Name for final APK file.
 # Defaults to package name.
