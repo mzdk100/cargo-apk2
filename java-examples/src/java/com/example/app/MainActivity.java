@@ -15,7 +15,7 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity {
     static { System.loadLibrary("java_examples"); }
-    // 声明本地方法，将在Rust中实现
+    // Declares the native method to be implemented in Rust.
     public native String getMessageFromRust();
     
     private MyService myService;
@@ -41,16 +41,16 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // 创建主布局
+        // creates the main layout
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         
-        // 添加Rust消息TextView
+        // adds the TextView containing the message from Rust
         TextView textView = new TextView(this);
         textView.setText(getMessageFromRust());
         layout.addView(textView);
         
-        // 添加服务控制按钮
+        // adds service buttons
         addServiceButton(layout, "Start Service", v -> {
             startService(new Intent(this, MyService.class));
         });
