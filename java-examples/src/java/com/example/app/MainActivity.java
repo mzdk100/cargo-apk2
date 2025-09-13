@@ -48,6 +48,7 @@ public class MainActivity extends Activity {
         // adds the TextView containing the message from Rust
         TextView textView = new TextView(this);
         textView.setText(getMessageFromRust());
+        textView.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         layout.addView(textView);
         
         // adds service buttons
