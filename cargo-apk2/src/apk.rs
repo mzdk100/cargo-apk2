@@ -235,6 +235,8 @@ impl<'a> ApkBuilder<'a> {
         Ok(())
     }
 
+    const PATH_SEPARATOR: char = if cfg!(windows) { ';' } else { ':' };
+
     pub fn compile_java_sources<P>(&self, java_sources: P) -> Result<(), Error>
     where
         P: AsRef<Path>,
@@ -258,7 +260,12 @@ impl<'a> ApkBuilder<'a> {
             .arg("-d")
             .arg(&self.classes_dir)
             .arg("-classpath")
-            .arg(&android_jar);
+            .arg(format!(
+                "{}{}{}",
+                android_jar.display(),
+                Self::PATH_SEPARATOR,
+                self.classes_dir.display()
+            ));
 
         // 添加所有Java源文件
         let mut has_java_files = false;
@@ -303,7 +310,12 @@ impl<'a> ApkBuilder<'a> {
             .arg("-d")
             .arg(&self.classes_dir)
             .arg("-classpath")
-            .arg(&android_jar);
+            .arg(format!(
+                "{}{}{}",
+                android_jar.display(),
+                Self::PATH_SEPARATOR,
+                self.classes_dir.display()
+            ));
 
         // 添加所有Kotlin源文件
         let mut has_kotlin_files = false;
@@ -346,12 +358,17 @@ impl<'a> ApkBuilder<'a> {
                     "scalac"
                 }),
         );
-        const PATH_SEPARATOR: char = if cfg!(windows) { ';' } else { ':' };
         scalac
             .arg("-d")
             .arg(&self.classes_dir)
             .arg("-classpath")
-            .arg(format!("{}{}", PATH_SEPARATOR, &android_jar.display()));
+            .arg(format!(
+                "{}{}{}{}",
+                Self::PATH_SEPARATOR,
+                android_jar.display(),
+                Self::PATH_SEPARATOR,
+                self.classes_dir.display()
+            ));
 
         // 添加所有Scala源文件
         let mut has_scala_files = false;
@@ -399,7 +416,12 @@ impl<'a> ApkBuilder<'a> {
             .arg("-d")
             .arg(&self.classes_dir)
             .arg("-classpath")
-            .arg(&android_jar)
+            .arg(format!(
+                "{}{}{}",
+                android_jar.display(),
+                Self::PATH_SEPARATOR,
+                self.classes_dir.display()
+            ))
             .arg("--compile-static");
 
         // 添加所有Groovy源文件
@@ -510,33 +532,8 @@ impl<'a> ApkBuilder<'a> {
         // 创建临时目录用于编译Java/Kotlin/Scala/Groovy
         create_dir_all(&self.classes_dir)?;
 
-        // 编译Java源文件
-        if gen_java_dir.exists() || java_sources.is_some() {
-            println!("Compiling Java sources...",);
-        }
         if gen_java_dir.exists() {
-            self.compile_java_sources(gen_java_dir)?;
-        }
-        if let Some(java_sources) = java_sources {
-            self.compile_java_sources(java_sources)?;
-        }
-
-        // 编译Kotlin源文件
-        if let Some(kotlin_sources) = kotlin_sources {
-            println!("Compiling Kotlin sources...",);
-            self.compile_kotlin_sources(kotlin_sources)?;
-        }
-
-        // 编译Scala源文件
-        if let Some(scala_sources) = scala_sources {
-            println!("Compiling Scala sources...",);
-            self.compile_scala_sources(scala_sources)?;
-        }
-
-        // 编译Groovy源文件
-        if let Some(groovy_sources) = groovy_sources {
-            println!("Compiling Groovy sources...",);
-            self.compile_groovy_sources(groovy_sources)?;
+            self.compile_java_sources(&gen_java_dir)?;
         }
 
         // 编译动态库
@@ -642,6 +639,32 @@ impl<'a> ApkBuilder<'a> {
             if let Some(runtime_libs) = &runtime_libs {
                 apk.add_runtime_libs(runtime_libs, *target, libs_search_paths.as_slice())?;
             }
+        }
+
+        // 编译Java源文件
+        if gen_java_dir.exists() || java_sources.is_some() {
+            println!("Compiling Java sources...",);
+        }
+        if let Some(java_sources) = java_sources {
+            self.compile_java_sources(java_sources)?;
+        }
+
+        // 编译Kotlin源文件
+        if let Some(kotlin_sources) = kotlin_sources {
+            println!("Compiling Kotlin sources...",);
+            self.compile_kotlin_sources(kotlin_sources)?;
+        }
+
+        // 编译Scala源文件
+        if let Some(scala_sources) = scala_sources {
+            println!("Compiling Scala sources...",);
+            self.compile_scala_sources(scala_sources)?;
+        }
+
+        // 编译Groovy源文件
+        if let Some(groovy_sources) = groovy_sources {
+            println!("Compiling Groovy sources...",);
+            self.compile_groovy_sources(groovy_sources)?;
         }
 
         let profile_name = match self.cmd.profile() {

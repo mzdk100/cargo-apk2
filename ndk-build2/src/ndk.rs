@@ -180,7 +180,7 @@ impl Ndk {
 
             let mut cmd = Command::new("cmd");
             cmd.arg("/C").arg(format!(
-                "chcp 65001 && {}",
+                "chcp 65001 >nul && {}",
                 dunce::canonicalize(path)?.display()
             ));
 
