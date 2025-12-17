@@ -160,6 +160,11 @@ pub struct Application {
     )]
     pub uses_cleartext_traffic: Option<bool>,
 
+    #[serde(rename(serialize = "android:allowNativeHeapPointerTagging"))]
+    pub allow_native_heap_pointer_tagging: Option<bool>,
+    #[serde(rename(serialize = "android:requestLegacyExternalStorage"))]
+    pub request_legacy_external_storage: Option<bool>,
+
     #[serde(rename(serialize = "meta-data"))]
     #[serde(default)]
     pub meta_data: Vec<MetaData>,
