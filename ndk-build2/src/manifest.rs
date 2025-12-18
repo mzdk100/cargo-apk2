@@ -91,6 +91,11 @@ pub struct Service {
     )]
     pub exported: Option<bool>,
     #[serde(
+        rename(serialize = "@android:foregroundServiceType"),
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub foreground_service_type: Option<String>,
+    #[serde(
         rename(serialize = "@android:permission"),
         skip_serializing_if = "Option::is_none"
     )]
@@ -115,6 +120,7 @@ impl Default for Service {
             name: Default::default(),
             enabled: None,
             exported: None,
+            foreground_service_type: None,
             permission: None,
             process: None,
             meta_data: Default::default(),
