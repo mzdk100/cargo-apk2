@@ -143,10 +143,15 @@ pub struct Application {
     )]
     pub theme: Option<String>,
     #[serde(
-        rename(serialize = "@android:hasCode",),
+        rename(serialize = "@android:hasCode"),
         skip_serializing_if = "Option::is_none"
     )]
     pub has_code: Option<bool>,
+    #[serde(
+        rename(serialize = "@android:hasFragileUserData"),
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub has_fragile_user_data: Option<bool>,
     #[serde(
         rename(serialize = "@android:icon"),
         skip_serializing_if = "Option::is_none"
