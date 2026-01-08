@@ -100,6 +100,11 @@ pub struct Service {
         skip_serializing_if = "Option::is_none"
     )]
     pub process: Option<String>,
+    #[serde(
+        rename(serialize = "@android:foregroundServiceType"),
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub foreground_service_type: Option<String>,
 
     #[serde(rename(serialize = "meta-data"))]
     #[serde(default)]
@@ -117,6 +122,7 @@ impl Default for Service {
             exported: None,
             permission: None,
             process: None,
+            foreground_service_type: None,
             meta_data: Default::default(),
             intent_filter: Default::default(),
         }
@@ -137,10 +143,15 @@ pub struct Application {
     )]
     pub theme: Option<String>,
     #[serde(
-        rename(serialize = "@android:hasCode",),
+        rename(serialize = "@android:hasCode"),
         skip_serializing_if = "Option::is_none"
     )]
     pub has_code: Option<bool>,
+    #[serde(
+        rename(serialize = "@android:hasFragileUserData"),
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub has_fragile_user_data: Option<bool>,
     #[serde(
         rename(serialize = "@android:icon"),
         skip_serializing_if = "Option::is_none"
@@ -159,6 +170,11 @@ pub struct Application {
         skip_serializing_if = "Option::is_none"
     )]
     pub uses_cleartext_traffic: Option<bool>,
+
+    #[serde(rename(serialize = "android:allowNativeHeapPointerTagging"))]
+    pub allow_native_heap_pointer_tagging: Option<bool>,
+    #[serde(rename(serialize = "android:requestLegacyExternalStorage"))]
+    pub request_legacy_external_storage: Option<bool>,
 
     #[serde(rename(serialize = "meta-data"))]
     #[serde(default)]
