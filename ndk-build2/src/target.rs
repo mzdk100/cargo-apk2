@@ -1,19 +1,23 @@
-use crate::error::NdkError;
-use serde::Deserialize;
+use {
+    crate::error::NdkError,
+    serde::{Deserialize, Serialize},
+};
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+//noinspection SpellCheckingInspection
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[repr(u8)]
 pub enum Target {
-    #[serde(rename(serialize = "armv7-linux-androideabi"))]
+    #[serde(rename = "armv7-linux-androideabi")]
     ArmV7a = 1,
-    #[serde(rename(serialize = "aarch64-linux-android"))]
+    #[serde(rename = "aarch64-linux-android")]
     Arm64V8a = 2,
-    #[serde(rename(serialize = "i686-linux-android"))]
+    #[serde(rename = "i686-linux-android")]
     X86 = 3,
-    #[serde(rename(serialize = "x86_64-linux-android"))]
+    #[serde(rename = "x86_64-linux-android")]
     X86_64 = 4,
 }
 
+//noinspection SpellCheckingInspection
 impl Target {
     /// NDK 中用于引用 ABI 的标识符
     pub fn android_abi(self) -> &'static str {

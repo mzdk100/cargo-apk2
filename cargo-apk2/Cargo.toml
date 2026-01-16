@@ -21,7 +21,7 @@ toml.workspace = true
 
 [dependencies.ndk-build2]
 path = "../ndk-build2"
-version = "1.3.3"
+version = "1.3.4"
 
 [dependencies.clap]
 workspace = true
