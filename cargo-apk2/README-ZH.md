@@ -51,6 +51,26 @@ crate-type = ["cdylib"]
 - `run`: 运行本地包的二进制文件或示例
 - `gdb`: 启动连接到 adb 设备的 gdb 会话并加载调试符号
 
+## 示例项目
+
+本仓库提供了多个示例项目，展示 `cargo-apk2` 的各种功能：
+
+- `egui-examples/` - 使用 egui 框架的示例
+- `groovy-examples/` - Groovy 语言集成示例
+- `java-examples/` - Java 语言集成示例
+- `kotlin-examples/` - Kotlin 语言集成示例
+- `ndk-examples/` - Android NDK 使用示例
+- `scala-examples/` - Scala 语言集成示例
+
+运行示例的方法如下：
+
+```shell
+cd egui-examples
+cargo apk2 run
+```
+
+在运行示例之前，请确保已通过 `adb` 连接了 Android 设备，并已安装 `cargo-apk2`。
+
 ## Manifest
 
 `cargo` 支持 `metadata` 表，用于配置 `cargo apk2` 等外部工具。

@@ -56,6 +56,26 @@ The source repository of this tool provides some example configurations.
 - `run`: Compile, install and run the selected crate/package on an attached Android device via `adb`
 - `gdb`: Start a gdb session on an attached Android device via `adb`, with symbols loaded
 
+## Examples
+
+This repository includes various example projects demonstrating different features of `cargo-apk2`:
+
+- `egui-examples/` - Examples using egui framework
+- `groovy-examples/` - Examples with Groovy integration
+- `java-examples/` - Examples with Java integration
+- `kotlin-examples/` - Examples with Kotlin integration
+- `ndk-examples/` - Examples using Android NDK
+- `scala-examples/` - Examples with Scala integration
+
+To run any example, navigate to its directory and execute:
+
+```shell
+cd egui-examples
+cargo apk2 run
+```
+
+Make sure you have an Android device connected via `adb` and have installed `cargo-apk2` before running the examples.
+
 ## Manifest
 
 `cargo apk` reads additional configuration from Cargo's `[package.metadata]` table. The following configuration options are supported by `cargo apk` under `[package.metadata.android]`:

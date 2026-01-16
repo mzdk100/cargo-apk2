@@ -19,6 +19,7 @@ cargo-subcommand = "0.12.0"
 clap = "4.5.54"
 dirs = "6.0.0"
 dunce = "1.0.5"
+eframe = "0.33.3"
 env_logger = "0.11.8"
 jni = "0.21.1"
 libc = "1.0.0-alpha.2"
@@ -30,9 +31,11 @@ serde = "1.0.228"
 thiserror = "2.0.17"
 toml = "0.9.11+spec-1.1.0"
 which = "8.0.0"
+winit = "0.31.0-beta.2"
 
 [workspace]
 members = [
+    "egui-examples",
     "groovy-examples",
     "java-examples",
     "kotlin-examples",
