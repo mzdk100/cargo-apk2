@@ -1,7 +1,9 @@
-use android_activity::AndroidApp;
-use android_logger::{init_once, Config};
-use log::{info, LevelFilter};
-use ndk::trace;
+use {
+    android_logger::{Config, init_once},
+    log::{LevelFilter, info},
+    ndk::trace,
+    winit::platform::android::activity::AndroidApp,
+};
 
 #[unsafe(no_mangle)]
 fn android_main(_app: AndroidApp) {

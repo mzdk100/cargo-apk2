@@ -144,6 +144,20 @@ strip = "default"
 # according to the specified build_targets.
 runtime_libs = "path/to/libs_folder"
 
+# Automatically bundle libc++_shared.so from NDK into the APK.
+# Many Rust crates (PyO3, winit, etc.) require the C++ runtime library.
+# This setting enables automatic detection and bundling of libc++_shared.so
+# from the NDK. Only effective when the user hasn't provided their own runtime_libs.
+include_cplusplus_shared = true
+
+# Apply compatibility fix for Android 5 (API < 24) on 32-bit architectures.
+# 64-bit fseek and ftell can break builds for 32-bit architectures on older Android versions.
+# When enabled, this option silently replaces fseeko with fseek and ftello with ftell
+# for armeabi-v7a architecture when targeting API < 24.
+# Note: This will crash with files larger than 2GB, but provides compatibility
+# for legacy Android 5 devices.
+legacy_fseek_fix = true
+
 # The name of a Linux user ID that is shared with other apps. By
 # default, Android assigns each app its own unique user ID. However, if
 # this attribute is set to the same value for two or more apps, they all

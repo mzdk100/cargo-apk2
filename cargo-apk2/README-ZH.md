@@ -132,6 +132,19 @@ strip = "default"
 # 根据指定的 `build_targets`，匹配 `libs_folder/${android_abi}/*.so` 的文件会被添加到 APK 中。
 runtime_libs = "path/to/libs_folder"
 
+# 自动从 NDK 打包 libc++_shared.so 到 APK 中。
+# 许多 Rust 库（如 PyO3、winit 等）需要 C++ 运行时库。
+# 启用此设置后，工具会自动检测并从 NDK 中捆绑 libc++_shared.so。
+# 仅在用户未提供自己的 runtime_libs 时生效。
+include_cplusplus_shared = true
+
+# 为 Android 5（API < 24）的 32 位架构应用兼容性修复。
+# 64 位 fseek 和 ftell 可能在旧版本 Android 的 32 位架构上导致构建失败。
+# 启用后，此选项会在针对 API < 24 的 armeabi-v7a 架构时，将 fseeko 替换为 fseek，
+# 将 ftello 替换为 ftell。
+# 注意：处理大于 2GB 的文件时会崩溃，但可以为老旧的 Android 5 设备提供兼容性。
+legacy_fseek_fix = true
+
 # 与其他应用共享的 Linux 用户 ID 的名称。默认情况下，Android 为每个应用分配一个唯一的用户 ID。
 # 但是，如果此属性为两个或更多应用设置为相同的值，它们将共享相同的 ID，前提是它们的证书集相同。
 # 具有相同用户 ID 的应用可以访问彼此的数据，并且如果需要，可以在同一进程中运行。

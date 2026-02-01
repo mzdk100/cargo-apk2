@@ -1,7 +1,9 @@
-use android_activity::AndroidApp;
-use android_logger::{init_once, Config};
-use jni::objects::{JIntArray, JObject, JObjectArray};
-use log::LevelFilter;
+use {
+    android_logger::{Config, init_once},
+    jni::objects::{JIntArray, JObject, JObjectArray},
+    log::LevelFilter,
+    winit::platform::android::activity::AndroidApp,
+};
 
 #[unsafe(no_mangle)]
 fn android_main(_app: AndroidApp) {

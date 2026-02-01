@@ -1,23 +1,25 @@
 //! Demonstrates how to manage application lifetime using Android's `Looper`
 //! 演示如何使用 Android 的“Looper”管理应用程序生命周期
 
-use log::{error, info, LevelFilter};
-use ndk::looper::{FdEvent, ThreadLooper};
-use std::{
-    mem::MaybeUninit,
-    os::{
-        fd::{AsRawFd, BorrowedFd},
-        unix::prelude::RawFd,
+use {
+    android_logger::{Config, init_once},
+    log::{LevelFilter, error, info},
+    ndk::looper::{FdEvent, ThreadLooper},
+    std::{
+        mem::MaybeUninit,
+        os::{
+            fd::{AsRawFd, BorrowedFd},
+            unix::prelude::RawFd,
+        },
+        thread::{sleep, spawn},
+        time::Duration,
     },
-    thread::{sleep, spawn},
-    time::Duration,
+    winit::platform::android::activity::{AndroidApp, InputStatus, MainEvent, PollEvent},
 };
 
 const U32_SIZE: usize = size_of::<u32>();
 
-use android_activity::{AndroidApp, InputStatus, MainEvent, PollEvent};
-use android_logger::{init_once, Config};
-
+//noinspection SpellCheckingInspection
 #[unsafe(no_mangle)]
 fn android_main(app: AndroidApp) {
     init_once(Config::default().with_max_level(LevelFilter::Info));

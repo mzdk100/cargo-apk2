@@ -1,3 +1,5 @@
+#![cfg(target_os = "android")]
+
 use {
     android_logger::{Config, init_once},
     eframe::{
@@ -21,7 +23,6 @@ impl App for MyApp {
 }
 
 //noinspection SpellCheckingInspection
-#[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
 fn android_main(app: AndroidApp) {
     // Initialize the logger so you can see output in `adb logcat`
