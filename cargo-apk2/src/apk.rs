@@ -639,6 +639,64 @@ impl<'a> ApkBuilder<'a> {
             if let Some(runtime_libs) = &runtime_libs {
                 apk.add_runtime_libs(runtime_libs, *target, libs_search_paths.as_slice())?;
             }
+
+            // === [FLAG] LEGACY FSEEK FIX ===
+            // 64-bit fseek and ftell breaks builds for 32-bit architectures,
+            // we can silently replace them keeping in mind it will crash with >2GB files in any case
+            // Controlled by `legacy_fseek_fix = true` in Cargo.toml
+            if self.manifest.legacy_fseek_fix {
+                if target.android_abi() == "armeabi-v7a" && self.min_sdk_version() < 24 {
+                    println!("Applying Lua fix for ARMv7 (API < 24): mapping fseeko->fseek");
+                    cargo.env("CFLAGS_armv7_linux_androideabi", "-Dfseeko=fseek -Dftello=ftell");
+                }
+            }
+
+            // === [FLAG] INCLUDE C++ SHARED ===
+            // Many Rust crates (PyO3, winit, etc.) require the C++ runtime.
+            // We attempt to locate libc++_shared.so in the NDK and bundle it.
+            // Only run this if the user hasn't provided their own runtime_libs.
+            // This prevents conflict and respects manual configuration.
+            // Controlled by `include_cplusplus_shared = true` in Cargo.toml
+            if self.manifest.include_cplusplus_shared {
+                // 1. Try sysroot (Standard for NDK r22+)
+                let sysroot_lib = self.ndk.sysroot_lib_dir(*target).ok();
+                let libcpp_sysroot = sysroot_lib.as_ref().map(|p| p.join("libc++_shared.so"));
+
+                // 2. Fallback path (Older NDKs)
+                let libcpp_fallback = self.ndk.ndk()
+                    .join("sources/cxx-stl/llvm-libc++/libs")
+                    .join(target.android_abi())
+                    .join("libc++_shared.so");
+
+                // Determine which path exists
+                let libcpp_path = if let Some(p) = libcpp_sysroot.filter(|p| p.exists()) {
+                    Some(p)
+                } else if libcpp_fallback.exists() {
+                    Some(libcpp_fallback.clone())
+                } else {
+                    None
+                };
+
+                if let Some(path) = libcpp_path {
+                    // Parent directory for libc++ shared
+                    let libcxx_build_dir = self.build_dir.join("libcxx");
+                    // Copy to: target/apk/libcxx/<abi>/libc++_shared.so
+                    let target_libcxx_dir = libcxx_build_dir.join(target.android_abi());
+                    create_dir_all(&target_libcxx_dir)?;
+
+                    let dest_path = target_libcxx_dir.join("libc++_shared.so");
+                    std::fs::copy(&path, &dest_path)?;
+
+                    // Pass the parent directory (libcxx_build_dir).
+                    // ndk-build2 automatically appends the ABI name to the path.
+                    // So passing '.../libcxx' makes it look in '.../libcxx/arm64-v8a'.
+                    apk.add_runtime_libs(&libcxx_build_dir, *target, libs_search_paths.as_slice())?;
+
+                    println!("Included libc++_shared.so for {} from {:?}", target.android_abi(), path);
+                } else {
+                    eprintln!("WARNING: libc++_shared.so not found for {}. Checked sysroot and fallback.", target.android_abi());
+                }
+            }
         }
 
         // 编译Java源文件
@@ -838,8 +896,8 @@ impl<'a> ApkBuilder<'a> {
             .android_manifest
             .sdk
             .min_sdk_version
-            .unwrap_or(23)
-            .max(23)
+            .unwrap_or(23)  // default value kept as 23 (set min_sdk_version 21 to allow Android 5)
+            //.max(23)      // forbid implicit replacement (to avoid silently broken legacy builds)
     }
 
     pub fn target_sdk_version(&self) -> u32 {
