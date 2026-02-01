@@ -28,6 +28,9 @@ pub(crate) struct Manifest {
     pub(crate) scala_sources: Option<PathBuf>,
     pub(crate) groovy_sources: Option<PathBuf>,
     pub(crate) runtime_libs: Option<PathBuf>,
+    /// legacy support fixes (Android 5): include c++ shared from NDK, replaces 64bit fseek with 32 bit
+    pub(crate) include_cplusplus_shared: bool,
+    pub(crate) legacy_fseek_fix: bool,
     /// 将配置文件映射到密钥库
     pub(crate) signing: HashMap<String, Signing>,
     pub(crate) reverse_port_forward: HashMap<String, String>,
@@ -60,6 +63,8 @@ impl Manifest {
             scala_sources: metadata.scala_sources,
             groovy_sources: metadata.groovy_sources,
             runtime_libs: metadata.runtime_libs,
+            include_cplusplus_shared: metadata.include_cplusplus_shared,
+            legacy_fseek_fix: metadata.legacy_fseek_fix,
             signing: metadata.signing,
             reverse_port_forward: metadata.reverse_port_forward,
             strip: metadata.strip,
@@ -123,6 +128,12 @@ struct AndroidMetadata {
     /// Groovy源文件的路径
     groovy_sources: Option<PathBuf>,
     runtime_libs: Option<PathBuf>,
+    /// Automatically bundle libc++_shared.so from NDK
+    #[serde(default)]
+    include_cplusplus_shared: bool,
+    /// Apply -Dfseeko=fseek fix for Android API < 24 on 32-bit archs
+    #[serde(default)]
+    legacy_fseek_fix: bool,
     /// Maps profiles to keystores
     #[serde(default)]
     signing: HashMap<String, Signing>,
