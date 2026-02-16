@@ -317,19 +317,19 @@ where
 /// Android [intent filter data 元素](https://developer.android.com/guide/topics/manifest/data-element).
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct IntentFilterData {
-    #[serde(rename(serialize = "@android:scheme"))]
+    #[serde(rename(serialize = "@android:scheme"), skip_serializing_if = "Option::is_none")]
     pub scheme: Option<String>,
-    #[serde(rename(serialize = "@android:host"))]
+    #[serde(rename(serialize = "@android:host"), skip_serializing_if = "Option::is_none")]
     pub host: Option<String>,
-    #[serde(rename(serialize = "@android:port"))]
+    #[serde(rename(serialize = "@android:port"), skip_serializing_if = "Option::is_none")]
     pub port: Option<String>,
-    #[serde(rename(serialize = "@android:path"))]
+    #[serde(rename(serialize = "@android:path"), skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
-    #[serde(rename(serialize = "@android:pathPattern"))]
+    #[serde(rename(serialize = "@android:pathPattern"), skip_serializing_if = "Option::is_none")]
     pub path_pattern: Option<String>,
-    #[serde(rename(serialize = "@android:pathPrefix"))]
+    #[serde(rename(serialize = "@android:pathPrefix"), skip_serializing_if = "Option::is_none")]
     pub path_prefix: Option<String>,
-    #[serde(rename(serialize = "@android:mimeType"))]
+    #[serde(rename(serialize = "@android:mimeType"), skip_serializing_if = "Option::is_none")]
     pub mime_type: Option<String>,
 }
 
