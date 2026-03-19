@@ -255,23 +255,28 @@ impl<'a> UnalignedApk<'a> {
 
     /// 将classes文件添加到APK中
     pub fn add_java_classes(&mut self) -> Result<(), NdkError> {
-        // 递归收集所有class文件
-        fn collect_class_files(dir: &Path, cmd: &mut Command) -> Result<(), NdkError> {
+        fn contains_class_files(dir: &Path) -> Result<bool, NdkError> {
             for entry in read_dir(dir).map_err(|e| NdkError::IoPathError(dir.to_path_buf(), e))? {
                 let entry = entry?;
                 let path = entry.path();
 
                 if path.is_dir() {
-                    collect_class_files(&path, cmd)?;
+                    if contains_class_files(&path)? {
+                        return Ok(true);
+                    }
                 } else if path.extension() == Some(OsStr::new("class")) {
-                    cmd.arg(&path);
+                    return Ok(true);
                 }
             }
 
-            Ok(())
+            Ok(false)
         }
 
         if !self.config.java_classes.exists() {
+            return Ok(());
+        }
+
+        if !contains_class_files(&self.config.java_classes)? {
             return Ok(());
         }
 
@@ -282,17 +287,40 @@ impl<'a> UnalignedApk<'a> {
             .sdk
             .target_sdk_version
             .unwrap_or_else(|| self.config.ndk.default_target_platform());
+        let min_sdk_version = self
+            .config
+            .manifest
+            .sdk
+            .min_sdk_version
+            .unwrap_or_else(|| self.config.ndk.default_target_platform());
+        let jar_file = self.config.build_dir.join("d8-classes.jar");
+        let _ = remove_file(&jar_file);
+
+        let mut jar = Command::new(if cfg!(windows) { "jar.exe" } else { "jar" });
+        jar.current_dir(&self.config.java_classes)
+            .arg("--create")
+            .arg("--file")
+            .arg(&jar_file)
+            .arg(".");
+        if !jar.status()?.success() {
+            return Err(NdkError::CmdFailed(jar));
+        }
+
         let mut d8 = self
             .config()
             .build_tool(if cfg!(windows) { "d8.bat" } else { "d8" })?;
         d8.arg("--output")
             .arg(&self.config.build_dir)
+            .arg("--intermediate")
+            .arg("--min-api")
+            .arg(min_sdk_version.to_string())
             .arg("--lib")
-            .arg(&self.config.ndk.android_jar(target_sdk_version)?);
-        collect_class_files(&self.config.java_classes, &mut d8)?;
+            .arg(&self.config.ndk.android_jar(target_sdk_version)?)
+            .arg(&jar_file);
 
         let dex_file = self.config.build_dir.join("classes.dex");
         let d8_result = d8.status();
+        let _ = remove_file(&jar_file);
         let success = match d8_result {
             Ok(status) => status.success(),
             Err(_) => {
@@ -314,12 +342,32 @@ impl<'a> UnalignedApk<'a> {
             );
         }
 
-        // 将classes.dex文件添加到APK中
-        if dex_file.exists() {
+        // 将classes.dex/classesN.dex文件添加到APK中
+        let mut dex_entries = Vec::new();
+        for entry in read_dir(&self.config.build_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            let Some(file_name) = path.file_name().and_then(|value| value.to_str()) else {
+                continue;
+            };
+            if file_name == "classes.dex"
+                || (file_name.starts_with("classes")
+                    && file_name.ends_with(".dex")
+                    && file_name[7..file_name.len() - 4]
+                        .chars()
+                        .all(|ch| ch.is_ascii_digit()))
+            {
+                dex_entries.push(file_name.to_string());
+            }
+        }
+        dex_entries.sort();
+
+        if !dex_entries.is_empty() {
             let mut aapt = self.config.build_tool(bin!("aapt"))?;
-            aapt.arg("add")
-                .arg(self.config.unaligned_apk())
-                .arg("classes.dex");
+            aapt.arg("add").arg(self.config.unaligned_apk());
+            for dex_entry in &dex_entries {
+                aapt.arg(dex_entry);
+            }
 
             if !aapt.status()?.success() {
                 return Err(NdkError::CmdFailed(aapt));
