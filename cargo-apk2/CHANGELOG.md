@@ -1,4 +1,15 @@
-# 未发布
+# 已发布
+
+# 1.3.7 (2026-04-28)
+
+- 修复 clippy 警告（`result_large_err`、`semver metadata`）；
+- 重构 `add_java_classes` 为 `add_jars`，将 jar 创建逻辑移到 `cargo-apk2` 并使用 `java_home` 查找 `jar.exe`；
+- 示例项目添加 `#![cfg(target_os = "android")]`，仅在 Android 平台编译。
+
+# 1.3.6 (2026-02-16)
+
+- 更新依赖项；
+- 避免在“IntentFilterData”中序列化空的可选值。
 
 # 1.3.5 (2026-02-01)
 

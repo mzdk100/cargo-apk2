@@ -3,8 +3,8 @@
 use {
     android_logger::{Config, init_once},
     eframe::{
-        App, NativeOptions,
-        egui::{CentralPanel, Context},
+        App, Frame, NativeOptions,
+        egui::{CentralPanel, Ui},
         run_native,
     },
     log::LevelFilter,
@@ -14,8 +14,8 @@ use {
 pub struct MyApp;
 
 impl App for MyApp {
-    fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
-        CentralPanel::default().show(ctx, |ui| {
+    fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
+        CentralPanel::default().show_inside(ui, |ui| {
             ui.heading("My egui Android App");
             ui.label("Hello world!");
         });

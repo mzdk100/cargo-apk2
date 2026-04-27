@@ -201,7 +201,7 @@ impl<'a> ApkBuilder<'a> {
             }
             self.cmd.args().apply(&mut cargo);
             if !cargo.status()?.success() {
-                return Err(NdkError::CmdFailed(cargo).into());
+                return Err(NdkError::CmdFailed(Box::new(cargo)).into());
             }
         }
 
@@ -276,7 +276,7 @@ impl<'a> ApkBuilder<'a> {
         }
 
         if !javac.status()?.success() {
-            return Err(Error::CmdFailed(javac));
+            return Err(Error::CmdFailed(Box::new(javac)));
         }
 
         Ok(())
@@ -329,12 +329,13 @@ impl<'a> ApkBuilder<'a> {
         }
 
         if !kotlinc.status()?.success() {
-            return Err(Error::CmdFailed(kotlinc));
+            return Err(Error::CmdFailed(Box::new(kotlinc)));
         }
 
         Ok(())
     }
 
+    //noinspection SpellCheckingInspection
     pub fn compile_scala_sources<P>(&self, scala_sources: P) -> Result<(), Error>
     where
         P: AsRef<Path>,
@@ -382,7 +383,7 @@ impl<'a> ApkBuilder<'a> {
         }
 
         if !scalac.status()?.success() {
-            return Err(Error::CmdFailed(scalac));
+            return Err(Error::CmdFailed(Box::new(scalac)));
         }
 
         Ok(())
@@ -441,12 +442,60 @@ impl<'a> ApkBuilder<'a> {
         }
 
         if !groovyc.status()?.success() {
-            return Err(Error::CmdFailed(groovyc));
+            return Err(Error::CmdFailed(Box::new(groovyc)));
         }
 
         Ok(())
     }
 
+    pub fn create_jar<P>(&self, path: P) -> Result<(), Error>
+    where
+        P: AsRef<Path>,
+    {
+        // 使用 java_home 查找 jar.exe 创建 jar 文件
+        let mut jar = Command::new(
+            self.java_home
+                .as_ref()
+                .ok_or(Error::JdkNotFound)?
+                .join("bin")
+                .join(if cfg!(windows) { "jar.exe" } else { "jar" }),
+        );
+        jar.arg("--create")
+            .arg("--file")
+            .arg(path.as_ref())
+            .arg("-C")
+            .arg(&self.classes_dir)
+            .arg(".");
+
+        if !jar.status()?.success() {
+            return Err(Error::CmdFailed(Box::new(jar)));
+        }
+
+        Ok(())
+    }
+
+    // 递归检查是否有 class 文件
+    fn has_class_files_recursive(dir: &Path) -> Result<bool, NdkError> {
+        if !dir.exists() {
+            return Ok(false);
+        }
+
+        for entry in read_dir(dir).map_err(|e| NdkError::IoPathError(dir.to_path_buf(), e))? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                if Self::has_class_files_recursive(&path)? {
+                    return Ok(true);
+                }
+            } else if path.extension() == Some(OsStr::new("class")) {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
+    }
+
+    //noinspection SpellCheckingInspection
     pub fn build(&self, artifact: &Artifact) -> Result<Apk, Error> {
         // 设置工件特定的清单默认值。
         let mut manifest = self.manifest.android_manifest.clone();
@@ -521,7 +570,6 @@ impl<'a> ApkBuilder<'a> {
             use_aapt2,
             assets: assets.clone(),
             resources: resources.clone(),
-            java_classes: self.classes_dir.clone(),
             manifest,
             disable_aapt_compression: is_debug_profile,
             strip: self.manifest.strip,
@@ -622,7 +670,7 @@ impl<'a> ApkBuilder<'a> {
             self.cmd.args().apply(&mut cargo);
 
             if !cargo.status()?.success() {
-                return Err(NdkError::CmdFailed(cargo).into());
+                return Err(NdkError::CmdFailed(Box::new(cargo)).into());
             }
 
             let mut libs_search_paths =
@@ -644,11 +692,15 @@ impl<'a> ApkBuilder<'a> {
             // 64-bit fseek and ftell breaks builds for 32-bit architectures,
             // we can silently replace them keeping in mind it will crash with >2GB files in any case
             // Controlled by `legacy_fseek_fix = true` in Cargo.toml
-            if self.manifest.legacy_fseek_fix {
-                if target.android_abi() == "armeabi-v7a" && self.min_sdk_version() < 24 {
-                    println!("Applying Lua fix for ARMv7 (API < 24): mapping fseeko->fseek");
-                    cargo.env("CFLAGS_armv7_linux_androideabi", "-Dfseeko=fseek -Dftello=ftell");
-                }
+            if self.manifest.legacy_fseek_fix
+                && target.android_abi() == "armeabi-v7a"
+                && self.min_sdk_version() < 24
+            {
+                println!("Applying Lua fix for ARMv7 (API < 24): mapping fseeko->fseek");
+                cargo.env(
+                    "CFLAGS_armv7_linux_androideabi",
+                    "-Dfseeko=fseek -Dftello=ftell",
+                );
             }
 
             // === [FLAG] INCLUDE C++ SHARED ===
@@ -663,7 +715,9 @@ impl<'a> ApkBuilder<'a> {
                 let libcpp_sysroot = sysroot_lib.as_ref().map(|p| p.join("libc++_shared.so"));
 
                 // 2. Fallback path (Older NDKs)
-                let libcpp_fallback = self.ndk.ndk()
+                let libcpp_fallback = self
+                    .ndk
+                    .ndk()
                     .join("sources/cxx-stl/llvm-libc++/libs")
                     .join(target.android_abi())
                     .join("libc++_shared.so");
@@ -692,16 +746,23 @@ impl<'a> ApkBuilder<'a> {
                     // So passing '.../libcxx' makes it look in '.../libcxx/arm64-v8a'.
                     apk.add_runtime_libs(&libcxx_build_dir, *target, libs_search_paths.as_slice())?;
 
-                    println!("Included libc++_shared.so for {} from {:?}", target.android_abi(), path);
+                    println!(
+                        "Included libc++_shared.so for {} from {:?}",
+                        target.android_abi(),
+                        path
+                    );
                 } else {
-                    eprintln!("WARNING: libc++_shared.so not found for {}. Checked sysroot and fallback.", target.android_abi());
+                    eprintln!(
+                        "WARNING: libc++_shared.so not found for {}. Checked sysroot and fallback.",
+                        target.android_abi()
+                    );
                 }
             }
         }
 
         // 编译Java源文件
         if gen_java_dir.exists() || java_sources.is_some() {
-            println!("Compiling Java sources...",);
+            println!("Compiling Java sources...");
         }
         if let Some(java_sources) = java_sources {
             self.compile_java_sources(java_sources)?;
@@ -709,19 +770,19 @@ impl<'a> ApkBuilder<'a> {
 
         // 编译Kotlin源文件
         if let Some(kotlin_sources) = kotlin_sources {
-            println!("Compiling Kotlin sources...",);
+            println!("Compiling Kotlin sources...");
             self.compile_kotlin_sources(kotlin_sources)?;
         }
 
         // 编译Scala源文件
         if let Some(scala_sources) = scala_sources {
-            println!("Compiling Scala sources...",);
+            println!("Compiling Scala sources...");
             self.compile_scala_sources(scala_sources)?;
         }
 
         // 编译Groovy源文件
         if let Some(groovy_sources) = groovy_sources {
-            println!("Compiling Groovy sources...",);
+            println!("Compiling Groovy sources...");
             self.compile_groovy_sources(groovy_sources)?;
         }
 
@@ -775,8 +836,16 @@ impl<'a> ApkBuilder<'a> {
             }
         };
 
-        // 添加Java类
-        apk.add_java_classes()?;
+        // 创建 jar 文件并添加到 APK
+        let combined_jar_file = self.build_dir.join("classes.jar");
+
+        if Self::has_class_files_recursive(&self.classes_dir)? {
+            println!("Creating classes.jar from compiled Java sources...");
+            self.create_jar(&combined_jar_file)?;
+            // 将 jar 转换为 dex 并添加到 APK
+            apk.put_jar(&combined_jar_file)?;
+        }
+
         let unsigned = apk.add_pending_libs_and_align()?;
 
         println!(
@@ -879,7 +948,7 @@ impl<'a> ApkBuilder<'a> {
             }
 
             if !cargo.status()?.success() {
-                return Err(NdkError::CmdFailed(cargo).into());
+                return Err(NdkError::CmdFailed(Box::new(cargo)).into());
             }
         }
 
@@ -896,8 +965,9 @@ impl<'a> ApkBuilder<'a> {
             .android_manifest
             .sdk
             .min_sdk_version
-            .unwrap_or(23)  // default value kept as 23 (set min_sdk_version 21 to allow Android 5)
-            //.max(23)      // forbid implicit replacement (to avoid silently broken legacy builds)
+            .unwrap_or(23) // default value kept as 23 (set min_sdk_version 21 to allow Android 5)
+
+        //.max(23)      // forbid implicit replacement (to avoid silently broken legacy builds)
     }
 
     pub fn target_sdk_version(&self) -> u32 {

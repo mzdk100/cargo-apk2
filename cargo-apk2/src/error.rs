@@ -11,7 +11,7 @@ pub enum Error {
     #[error(transparent)]
     Subcommand(#[from] SubcommandError),
     #[error("Command `{}` had a non-zero exit code.", format!("{:?}", .0).replace('"', ""))]
-    CmdFailed(Command),
+    CmdFailed(Box<Command>),
     #[error("Failed to parse config.")]
     Config(#[from] TomlError),
     #[error(transparent)]

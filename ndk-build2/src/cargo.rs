@@ -138,7 +138,7 @@ impl VersionCode {
     }
 
     pub fn from_semver(version: &str) -> Result<Self, NdkError> {
-        let mut iter = version.split(|c1| ['.', '-', '+'].iter().any(|c2| c1 == *c2));
+        let mut iter = version.split(|c1| ['.', '-', '+'].contains(&c1));
         let mut p = || {
             iter.next()
                 .ok_or(NdkError::InvalidSemver)?

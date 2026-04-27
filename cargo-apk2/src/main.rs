@@ -138,8 +138,7 @@ fn get_single_artifact(cmd: &Subcommand) -> Result<Artifact, Error> {
         };
     }
 
-    iter.filter(|i| i.r#type == ArtifactType::Lib)
-        .next()
+    iter.find(|i| i.r#type == ArtifactType::Lib)
         .map(|i| i.to_owned())
         .ok_or(Error::NoArtifactAvailable)
 }
@@ -170,7 +169,11 @@ fn main() -> anyhow::Result<()> {
             let builder = ApkBuilder::from_subcommand(&cmd, args.device)?;
             builder.default(&cargo_cmd, &cargo_args)?;
         }
-        ApkSubCmd::Run { args, no_logcat, show_logcat_time } => {
+        ApkSubCmd::Run {
+            args,
+            no_logcat,
+            show_logcat_time,
+        } => {
             let cmd = Subcommand::new(args.subcommand_args)?;
             let builder = ApkBuilder::from_subcommand(&cmd, args.device)?;
             let artifact = get_single_artifact(&cmd)?;

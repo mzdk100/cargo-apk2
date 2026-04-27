@@ -397,7 +397,7 @@ impl Ndk {
             return Ok(Command::new(keytool));
         }
         if let Some(java) = android_build::java_home() {
-            let keytool = PathBuf::from(java).join("bin").join(bin!("keytool"));
+            let keytool = java.join("bin").join(bin!("keytool"));
             if keytool.exists() {
                 return Ok(Command::new(keytool));
             }
@@ -433,7 +433,7 @@ impl Ndk {
                 .arg("-validity")
                 .arg("10000");
             if !keytool.status()?.success() {
-                return Err(NdkError::CmdFailed(keytool));
+                return Err(NdkError::CmdFailed(Box::new(keytool)));
             }
         }
 

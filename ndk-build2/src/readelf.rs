@@ -70,7 +70,7 @@ fn list_needed_libs(readelf_path: &Path, library_path: &Path) -> Result<HashSet<
     let mut readelf = Command::new(readelf_path);
     let output = readelf.arg("-d").arg(library_path).output()?;
     if !output.status.success() {
-        return Err(NdkError::CmdFailed(readelf));
+        return Err(NdkError::CmdFailed(Box::new(readelf)));
     }
     let mut needed = HashSet::new();
     for line in output.stdout.lines() {
@@ -94,12 +94,11 @@ fn list_libs(path: &Path) -> Result<HashSet<String>, NdkError> {
     let entries = std::fs::read_dir(path)?;
     for entry in entries {
         let entry = entry?;
-        if !entry.path().is_dir() {
-            if let Some(file_name) = entry.file_name().to_str() {
-                if file_name.ends_with(".so") {
-                    libs.insert(file_name.to_string());
-                }
-            }
+        if !entry.path().is_dir()
+            && let Some(file_name) = entry.file_name().to_str()
+            && file_name.ends_with(".so")
+        {
+            libs.insert(file_name.to_string());
         }
     }
     Ok(libs)

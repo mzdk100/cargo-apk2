@@ -1,6 +1,8 @@
-use crate::error::NdkError;
-use serde::{Deserialize, Serialize, Serializer};
-use std::{fs::File, io::Write, path::Path};
+use {
+    crate::error::NdkError,
+    serde::{Deserialize, Serialize, Serializer},
+    std::{fs::File, io::Write, path::Path},
+};
 
 /// Android [manifest 元素](https://developer.android.com/guide/topics/manifest/manifest-element), containing an [`Application`] element.
 // quick_xml规定#[serde(rename)]的值如果带有`@`符号表示属性，否则表示tag
@@ -317,19 +319,40 @@ where
 /// Android [intent filter data 元素](https://developer.android.com/guide/topics/manifest/data-element).
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct IntentFilterData {
-    #[serde(rename(serialize = "@android:scheme"), skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename(serialize = "@android:scheme"),
+        skip_serializing_if = "Option::is_none"
+    )]
     pub scheme: Option<String>,
-    #[serde(rename(serialize = "@android:host"), skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename(serialize = "@android:host"),
+        skip_serializing_if = "Option::is_none"
+    )]
     pub host: Option<String>,
-    #[serde(rename(serialize = "@android:port"), skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename(serialize = "@android:port"),
+        skip_serializing_if = "Option::is_none"
+    )]
     pub port: Option<String>,
-    #[serde(rename(serialize = "@android:path"), skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename(serialize = "@android:path"),
+        skip_serializing_if = "Option::is_none"
+    )]
     pub path: Option<String>,
-    #[serde(rename(serialize = "@android:pathPattern"), skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename(serialize = "@android:pathPattern"),
+        skip_serializing_if = "Option::is_none"
+    )]
     pub path_pattern: Option<String>,
-    #[serde(rename(serialize = "@android:pathPrefix"), skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename(serialize = "@android:pathPrefix"),
+        skip_serializing_if = "Option::is_none"
+    )]
     pub path_prefix: Option<String>,
-    #[serde(rename(serialize = "@android:mimeType"), skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename(serialize = "@android:mimeType"),
+        skip_serializing_if = "Option::is_none"
+    )]
     pub mime_type: Option<String>,
 }
 
@@ -418,6 +441,7 @@ pub struct Package {
     pub name: String,
 }
 
+//noinspection SpellCheckingInspection
 /// Android [provider 元素](https://developer.android.com/guide/topics/manifest/queries-element#provider).
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct QueryProvider {

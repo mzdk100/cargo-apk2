@@ -10,7 +10,7 @@ use {
         collections::{HashMap, HashSet},
         ffi::OsStr,
         fs::{copy, create_dir_all, read_dir, remove_dir_all, remove_file, rename},
-        io::{Error as IoError, ErrorKind},
+        io::Error as IoError,
         path::{Path, PathBuf},
         process::Command,
         str::from_utf8,
@@ -43,7 +43,6 @@ pub struct ApkConfig {
     pub use_aapt2: bool,
     pub assets: Option<PathBuf>,
     pub resources: Option<PathBuf>,
-    pub java_classes: PathBuf,
     pub manifest: AndroidManifest,
     pub disable_aapt_compression: bool,
     pub strip: StripConfig,
@@ -146,7 +145,7 @@ impl ApkConfig {
         }
 
         if !aapt.status()?.success() {
-            return Err(NdkError::CmdFailed(aapt));
+            return Err(NdkError::CmdFailed(Box::new(aapt)));
         }
 
         Ok(())
@@ -172,7 +171,7 @@ impl ApkConfig {
         }
 
         if !aapt.status()?.success() {
-            return Err(NdkError::CmdFailed(aapt));
+            return Err(NdkError::CmdFailed(Box::new(aapt)));
         }
 
         Ok(())
@@ -208,15 +207,15 @@ impl ApkConfig {
         }
 
         if compiled_dir.as_ref().exists()
-            && let Ok(mut files) = read_dir(compiled_dir)
+            && let Ok(files) = read_dir(compiled_dir)
         {
-            while let Some(file) = files.next() {
+            for file in files {
                 aapt.arg(file?.path());
             }
         }
 
         if !aapt.status()?.success() {
-            return Err(NdkError::CmdFailed(aapt));
+            return Err(NdkError::CmdFailed(Box::new(aapt)));
         }
 
         Ok(())
@@ -236,7 +235,7 @@ impl ApkConfig {
 
         if !aapt.status()?.success() {
             remove_file(input_path)?;
-            return Err(NdkError::CmdFailed(aapt));
+            return Err(NdkError::CmdFailed(Box::new(aapt)));
         }
         remove_file(input_path)?;
         Ok(())
@@ -253,25 +252,9 @@ impl<'a> UnalignedApk<'a> {
         self.config
     }
 
-    /// 将classes文件添加到APK中
-    pub fn add_java_classes(&mut self) -> Result<(), NdkError> {
-        // 递归收集所有class文件
-        fn collect_class_files(dir: &Path, cmd: &mut Command) -> Result<(), NdkError> {
-            for entry in read_dir(dir).map_err(|e| NdkError::IoPathError(dir.to_path_buf(), e))? {
-                let entry = entry?;
-                let path = entry.path();
-
-                if path.is_dir() {
-                    collect_class_files(&path, cmd)?;
-                } else if path.extension() == Some(OsStr::new("class")) {
-                    cmd.arg(&path);
-                }
-            }
-
-            Ok(())
-        }
-
-        if !self.config.java_classes.exists() {
+    /// 将jar文件转换为dex并添加到APK中
+    pub fn put_jar(&mut self, jar_file: &Path) -> Result<(), NdkError> {
+        if !jar_file.exists() {
             return Ok(());
         }
 
@@ -282,14 +265,24 @@ impl<'a> UnalignedApk<'a> {
             .sdk
             .target_sdk_version
             .unwrap_or_else(|| self.config.ndk.default_target_platform());
+        let min_sdk_version = self
+            .config
+            .manifest
+            .sdk
+            .min_sdk_version
+            .unwrap_or_else(|| self.config.ndk.default_target_platform());
+
         let mut d8 = self
             .config()
             .build_tool(if cfg!(windows) { "d8.bat" } else { "d8" })?;
         d8.arg("--output")
             .arg(&self.config.build_dir)
+            .arg("--intermediate")
+            .arg("--min-api")
+            .arg(min_sdk_version.to_string())
             .arg("--lib")
-            .arg(&self.config.ndk.android_jar(target_sdk_version)?);
-        collect_class_files(&self.config.java_classes, &mut d8)?;
+            .arg(&self.config.ndk.android_jar(target_sdk_version)?)
+            .arg(jar_file);
 
         let dex_file = self.config.build_dir.join("classes.dex");
         let d8_result = d8.status();
@@ -299,30 +292,45 @@ impl<'a> UnalignedApk<'a> {
                 // 如果d8不可用，尝试使用dx工具（旧版本）
                 println!("d8 not found, trying dx...");
                 let mut dx = Command::new("dx");
-                dx.arg("--dex")
-                    .arg("--output")
-                    .arg(&dex_file)
-                    .arg(&self.config.java_classes);
+                dx.arg("--dex").arg("--output").arg(&dex_file).arg(jar_file);
 
                 dx.status()?.success()
             }
         };
 
         if !success {
-            return Err(
-                IoError::new(ErrorKind::Other, "Failed to convert class files to dex").into(),
-            );
+            return Err(IoError::other("Failed to convert jar to dex").into());
         }
 
-        // 将classes.dex文件添加到APK中
-        if dex_file.exists() {
+        // 将classes.dex/classesN.dex文件添加到APK中
+        let mut dex_entries = Vec::new();
+        for entry in read_dir(&self.config.build_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            let Some(file_name) = path.file_name().and_then(|value| value.to_str()) else {
+                continue;
+            };
+            if file_name == "classes.dex"
+                || (file_name.starts_with("classes")
+                    && file_name.ends_with(".dex")
+                    && file_name[7..file_name.len() - 4]
+                        .chars()
+                        .all(|ch| ch.is_ascii_digit()))
+            {
+                dex_entries.push(file_name.to_string());
+            }
+        }
+        dex_entries.sort();
+
+        if !dex_entries.is_empty() {
             let mut aapt = self.config.build_tool(bin!("aapt"))?;
-            aapt.arg("add")
-                .arg(self.config.unaligned_apk())
-                .arg("classes.dex");
+            aapt.arg("add").arg(self.config.unaligned_apk());
+            for dex_entry in &dex_entries {
+                aapt.arg(dex_entry);
+            }
 
             if !aapt.status()?.success() {
-                return Err(NdkError::CmdFailed(aapt));
+                return Err(NdkError::CmdFailed(Box::new(aapt)));
             }
         }
 
@@ -353,7 +361,7 @@ impl<'a> UnalignedApk<'a> {
                     cmd.arg(&out);
 
                     if !cmd.status()?.success() {
-                        return Err(NdkError::CmdFailed(cmd));
+                        return Err(NdkError::CmdFailed(Box::new(cmd)));
                     }
                 }
 
@@ -367,7 +375,7 @@ impl<'a> UnalignedApk<'a> {
                         cmd.arg(&dwarf_path);
 
                         if !cmd.status()?.success() {
-                            return Err(NdkError::CmdFailed(cmd));
+                            return Err(NdkError::CmdFailed(Box::new(cmd)));
                         }
                     }
 
@@ -376,7 +384,7 @@ impl<'a> UnalignedApk<'a> {
                     cmd.arg(out);
 
                     if !cmd.status()?.success() {
-                        return Err(NdkError::CmdFailed(cmd));
+                        return Err(NdkError::CmdFailed(Box::new(cmd)));
                     }
                 }
             }
@@ -424,7 +432,7 @@ impl<'a> UnalignedApk<'a> {
         }
 
         if !aapt.status()?.success() {
-            return Err(NdkError::CmdFailed(aapt));
+            return Err(NdkError::CmdFailed(Box::new(aapt)));
         }
 
         let mut zipalign = self.config.build_tool(bin!("zipalign"))?;
@@ -436,7 +444,7 @@ impl<'a> UnalignedApk<'a> {
             .arg(self.config.apk());
 
         if !zipalign.status()?.success() {
-            return Err(NdkError::CmdFailed(zipalign));
+            return Err(NdkError::CmdFailed(Box::new(zipalign)));
         }
 
         Ok(UnsignedApk(self.config))
@@ -456,7 +464,7 @@ impl<'a> UnsignedApk<'a> {
             .arg(format!("pass:{}", &key.password))
             .arg(self.0.apk());
         if !apksigner.status()?.success() {
-            return Err(NdkError::CmdFailed(apksigner));
+            return Err(NdkError::CmdFailed(Box::new(apksigner)));
         }
         Ok(Apk::from_config(self.0))
     }
@@ -488,7 +496,7 @@ impl Apk {
             adb.arg("reverse").arg(from).arg(to);
 
             if !adb.status()?.success() {
-                return Err(NdkError::CmdFailed(adb));
+                return Err(NdkError::CmdFailed(Box::new(adb)));
             }
         }
 
@@ -500,7 +508,7 @@ impl Apk {
 
         adb.arg("install").arg("-r").arg(&self.path);
         if !adb.status()?.success() {
-            return Err(NdkError::CmdFailed(adb));
+            return Err(NdkError::CmdFailed(Box::new(adb)));
         }
         Ok(())
     }
@@ -524,7 +532,7 @@ impl Apk {
         adb.arg(format!("{}/{}", self.package_name, activity_name));
 
         if !adb.status()?.success() {
-            return Err(NdkError::CmdFailed(adb));
+            return Err(NdkError::CmdFailed(Box::new(adb)));
         }
 
         Ok(())
@@ -542,7 +550,7 @@ impl Apk {
         let output = adb.output()?;
 
         if !output.status.success() {
-            return Err(NdkError::CmdFailed(adb));
+            return Err(NdkError::CmdFailed(Box::new(adb)));
         }
 
         let output = from_utf8(&output.stdout)?;
