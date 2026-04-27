@@ -72,7 +72,7 @@ jobs:
       - name: Cargo apk build for target ${{ matrix.rust-target }}
         run: cargo apk2 build -p ndk-examples --target ${{ matrix.rust-target }} --features hello_world
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         # Only need this for CI, unless users are interested in downloading
         # a ready-made app that does nothing but printing "hello world".
         if: ${{ matrix.rust-target == 'x86_64-linux-android' }}
@@ -100,12 +100,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         name: Download hello_world APK
         if: ${{ matrix.source_os != 'local' }}
-        id: download
         with:
           name: hello_world_${{ matrix.source_os }}_x86_64-linux-android
+          path: ./downloaded-apk
 
       - name: Install `cargo-apk2` and add `x86_64-linux-android` target
         if: ${{ matrix.source_os == 'local' }}
@@ -114,7 +114,7 @@ jobs:
           rustup target add x86_64-linux-android
 
       - name: AVD cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: avd-cache
         with:
           path: |
@@ -146,10 +146,10 @@ jobs:
           emulator-options: -no-snapshot-save ${{ env.emulator-options }}
           disable-animations: true
           force-avd-creation: false
-          script: ./.github/workflows/android_test.sh "${{ steps.download.outputs.download-path }}"
+          script: ./.github/workflows/android_test.sh "./downloaded-apk"
 
       - name: Upload emulator logs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
           name: log
