@@ -279,6 +279,9 @@ resizeable_activity = false
 # 参见 https://developer.android.google.cn/guide/topics/manifest/activity-element#always
 always_retain_task_state = true
 
+# 参见 https://developer.android.google.cn/guide/topics/manifest/activity-element#softInputMode
+window_soft_input_mode = "adjustResize"
+
 # 参见 https://developer.android.google.cn/guide/topics/manifest/meta-data-element
 #
 # 注意：可以有多个 `.meta_data` 条目。

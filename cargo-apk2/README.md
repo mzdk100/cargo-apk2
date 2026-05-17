@@ -306,6 +306,9 @@ resizeable_activity = false
 # See https://developer.android.com/guide/topics/manifest/activity-element#always
 always_retain_task_state = true
 
+# See https://developer.android.com/guide/topics/manifest/activity-element#softInputMode
+window_soft_input_mode = "adjustResize"
+
 # See https://developer.android.com/guide/topics/manifest/meta-data-element
 #
 # Note: there can be several .meta_data entries.

@@ -69,7 +69,7 @@ impl Default for AndroidManifest {
 impl AndroidManifest {
     pub fn write_to(&self, dir: &Path) -> Result<(), NdkError> {
         let mut buf = String::new();
-        quick_xml::se::to_writer(&mut buf, &self).map_err(|e| NdkError::Serialize(e))?;
+        quick_xml::se::to_writer(&mut buf, &self).map_err(NdkError::Serialize)?;
         let mut file = File::create(dir.join("AndroidManifest.xml"))?;
         file.write_all(buf.as_bytes())?;
         Ok(())
@@ -77,7 +77,7 @@ impl AndroidManifest {
 }
 
 /// Android [service 元素](https://developer.android.com/guide/topics/manifest/service-element).
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Service {
     #[serde(rename(serialize = "@android:name"))]
     #[serde(default)]
@@ -114,21 +114,6 @@ pub struct Service {
     #[serde(rename(serialize = "intent-filter"))]
     #[serde(default)]
     pub intent_filter: Vec<IntentFilter>,
-}
-
-impl Default for Service {
-    fn default() -> Self {
-        Self {
-            name: Default::default(),
-            enabled: None,
-            exported: None,
-            permission: None,
-            process: None,
-            foreground_service_type: None,
-            meta_data: Default::default(),
-            intent_filter: Default::default(),
-        }
-    }
 }
 
 /// Android [application 元素](https://developer.android.com/guide/topics/manifest/application-element), containing an [`Activity`] element.
@@ -231,6 +216,11 @@ pub struct Activity {
         skip_serializing_if = "Option::is_none"
     )]
     pub always_retain_task_state: Option<bool>,
+    #[serde(
+        rename(serialize = "@android:windowSoftInputMode"),
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub window_soft_input_mode: Option<String>,
 
     #[serde(rename(serialize = "meta-data"))]
     #[serde(default)]
@@ -252,6 +242,7 @@ impl Default for Activity {
             exported: None,
             resizeable_activity: None,
             always_retain_task_state: None,
+            window_soft_input_mode: None,
             meta_data: Default::default(),
             intent_filter: Default::default(),
         }
