@@ -57,13 +57,6 @@ impl ApkConfig {
         Ok(cmd)
     }
 
-    fn build_tool_utf8(&self, tool: &'static str) -> Result<Command, NdkError> {
-        let mut cmd = self.ndk.build_tool_utf8(tool)?;
-        cmd.current_dir(&self.build_dir);
-
-        Ok(cmd)
-    }
-
     fn unaligned_apk(&self) -> PathBuf {
         self.build_dir
             .join(format!("{}-unaligned.apk", self.apk_name))
@@ -158,7 +151,7 @@ impl ApkConfig {
         let _ = remove_dir_all(&out_dir);
         create_dir_all(&out_dir)?;
 
-        let mut aapt = self.build_tool_utf8(bin!("aapt2"))?;
+        let mut aapt = self.build_tool(bin!("aapt2"))?;
         println!("Compiling apk resources...");
         aapt.arg("compile").arg("-o").arg(out_dir.as_ref());
 
@@ -186,7 +179,7 @@ impl ApkConfig {
     where
         P: AsRef<Path>,
     {
-        let mut aapt = self.build_tool_utf8(bin!("aapt2"))?;
+        let mut aapt = self.build_tool(bin!("aapt2"))?;
         println!("Linking apk resources...");
         aapt.arg("link")
             .arg("-o")
@@ -222,7 +215,7 @@ impl ApkConfig {
     }
 
     fn aapt2_optimize(&self) -> Result<(), NdkError> {
-        let mut aapt = self.build_tool_utf8(bin!("aapt2"))?;
+        let mut aapt = self.build_tool(bin!("aapt2"))?;
         println!("Optimizing apk resources...");
         let path = self.unaligned_apk();
         let input_path = path.parent().unwrap().join(&self.manifest.package);

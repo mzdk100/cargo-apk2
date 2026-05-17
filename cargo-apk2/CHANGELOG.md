@@ -1,5 +1,11 @@
 # 已发布
 
+# 1.3.8 (2026-05-18)
+
+- 添加 `android:windowSoftInputMode` 属性支持到 Activity 元素。([#16](https://github.com/mzdk100/cargo-apk2/issues/16))
+- 修复 Windows 上包含空格的路径处理问题。
+- 修复 clippy 警告。
+
 # 1.3.7 (2026-04-28)
 
 - 修复 clippy 警告（`result_large_err`、`semver metadata`）；

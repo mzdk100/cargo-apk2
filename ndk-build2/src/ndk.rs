@@ -1,5 +1,6 @@
 use {
     crate::{error::NdkError, target::Target},
+    dunce::canonicalize,
     std::{
         collections::HashMap,
         env::var,
@@ -166,29 +167,7 @@ impl Ndk {
             return Err(NdkError::CmdNotFound(tool.to_string()));
         }
 
-        Ok(Command::new(dunce::canonicalize(path)?))
-    }
-
-    //noinspection SpellCheckingInspection
-    pub fn build_tool_utf8(&self, tool: &str) -> Result<Command, NdkError> {
-        #[cfg(windows)]
-        {
-            let path = self.build_tools().join(tool);
-            if !path.exists() {
-                return Err(NdkError::CmdNotFound(tool.to_string()));
-            }
-
-            let mut cmd = Command::new("cmd");
-            cmd.arg("/C").arg(format!(
-                "chcp 65001 >nul && {}",
-                dunce::canonicalize(path)?.display()
-            ));
-
-            Ok(cmd)
-        }
-
-        #[cfg(not(windows))]
-        self.build_tool(tool)
+        Ok(Command::new(canonicalize(path)?))
     }
 
     pub fn platform_tool_path(&self, tool: &str) -> Result<PathBuf, NdkError> {
@@ -197,7 +176,7 @@ impl Ndk {
             return Err(NdkError::CmdNotFound(tool.to_string()));
         }
 
-        Ok(dunce::canonicalize(path)?)
+        Ok(canonicalize(path)?)
     }
 
     pub fn adb_path(&self) -> Result<PathBuf, NdkError> {
@@ -241,6 +220,7 @@ impl Ndk {
         Ok(android_jar)
     }
 
+    //noinspection SpellCheckingInspection
     fn host_arch() -> Result<&'static str, NdkError> {
         let host_os = var("HOST").ok();
         let host_contains = |s| host_os.as_ref().map(|h| h.contains(s)).unwrap_or(false);
@@ -319,7 +299,7 @@ impl Ndk {
         let toolchain_path = self.toolchain_dir()?.join("bin");
 
         // Since r21 (https://github.com/android/ndk/wiki/Changelog-r21) LLVM binutils are included _for testing_;
-        // Since r22 (https://github.com/android/ndk/wiki/Changelog-r22) GNU binutils are deprecated in favour of LL-VM's;
+        // Since r22 (https://github.com/android/ndk/wiki/Changelog-r22) GNU binutils are deprecated in favor of LL-VM's;
         // Since r23 (https://github.com/android/ndk/wiki/Changelog-r23) GNU binutils have been removed.
         // To maintain stability with the current ndk-build crate release, prefer GNU binutils for
         // as long as it is provided by the NDK instead of trying to use llvm-* from r21 onwards.
