@@ -107,10 +107,10 @@ fn android_main(app: AndroidApp) {
                         }
                         MainEvent::Pause => {}
                         MainEvent::Resume { loader, .. } => {
-                            if let Some(state) = loader.load() {
-                                if let Ok(uri) = String::from_utf8(state) {
-                                    info!("Resumed with saved state = {uri:#?}");
-                                }
+                            if let Some(state) = loader.load()
+                                && let Ok(uri) = String::from_utf8(state)
+                            {
+                                info!("Resumed with saved state = {uri:#?}");
                             }
                         }
                         MainEvent::InitWindow { .. } => {
@@ -141,24 +141,22 @@ fn android_main(app: AndroidApp) {
                 _ => {}
             }
 
-            if redraw_pending {
-                if let Some(_rs) = render_state {
-                    redraw_pending = false;
+            if redraw_pending && let Some(_rs) = render_state {
+                redraw_pending = false;
 
-                    // Handle input
-                    // 处理输入
-                    match app.input_events_iter() {
-                        Ok(mut it) => loop {
-                            it.next(|event| {
-                                info!("Input Event: {event:?}");
-                                InputStatus::Unhandled
-                            });
-                        },
-                        Err(e) => error!("{}", e),
-                    }
-
-                    info!("Render...");
+                // Handle input
+                // 处理输入
+                match app.input_events_iter() {
+                    Ok(mut it) => loop {
+                        it.next(|event| {
+                            info!("Input Event: {event:?}");
+                            InputStatus::Unhandled
+                        });
+                    },
+                    Err(e) => error!("{}", e),
                 }
+
+                info!("Render...");
             }
         });
     }

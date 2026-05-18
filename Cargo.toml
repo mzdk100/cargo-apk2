@@ -8,7 +8,7 @@ edition = "2024"
 license = "MIT OR Apache-2.0"
 keywords = ["android", "ndk", "apk"]
 repository = "https://github.com/mzdk100/cargo-apk2.git"
-rust-version = "1.90.0"
+rust-version = "1.95.0"
 
 [workspace.dependencies]
 android-build = { version = "0.1.3", default-features = false }
