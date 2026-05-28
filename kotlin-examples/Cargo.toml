@@ -16,7 +16,7 @@ kotlin_sources = "src/kotlin"
 
 [package.metadata.android.sdk]
 min_sdk_version = 24
-target_sdk_version = 36
+target_sdk_version = 37
 
 [[package.metadata.android.application.activity]]
 name = ".MainActivity"

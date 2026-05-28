@@ -14,7 +14,7 @@ winit = {workspace = true, features = ["android-native-activity"]}
 
 [package.metadata.android.sdk]
 min_sdk_version = 29
-target_sdk_version = 36
+target_sdk_version = 37
 
 # This needs to be turned on for cargo apk2.
 [package.metadata.android.application]

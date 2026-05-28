@@ -1,5 +1,11 @@
 # 已发布
 
+# 1.3.9 (2026-05-28)
+
+- 默认 `target_sdk_version` 从 36 升级到 37。
+- 兼容 Android SDK 新的目录命名格式（如 `android-37.0`），支持检测和查找版本化的平台目录。
+- 更新依赖项：`android-build` 0.1.4、`eframe`/`egui` 0.34.3、`log` 0.4.30。
+
 # 1.3.8 (2026-05-18)
 
 - 添加 `android:windowSoftInputMode` 属性支持到 Activity 元素。([#16](https://github.com/mzdk100/cargo-apk2/issues/16))

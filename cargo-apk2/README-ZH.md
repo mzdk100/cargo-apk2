@@ -166,11 +166,11 @@ keystore_password = "android"
 
 # 参见 https://developer.android.google.cn/guide/topics/manifest/uses-sdk-element
 #
-# `min_sdk_version` 默认为 24，`target_sdk_version` 默认为 36（如果检测到的 NDK 不支持，则为较低的版本）。
+# `min_sdk_version` 默认为 24，`target_sdk_version` 默认为 37（如果检测到的 NDK 不支持，则为较低的版本）。
 [package.metadata.android.sdk]
 min_sdk_version = 24
-target_sdk_version = 36
-max_sdk_version = 36
+target_sdk_version = 37
+max_sdk_version = 37
 
 # 参见 https://developer.android.google.cn/guide/topics/manifest/uses-feature-element
 #

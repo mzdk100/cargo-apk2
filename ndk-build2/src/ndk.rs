@@ -91,7 +91,7 @@ impl Ndk {
                     let _major = parts.next().unwrap();
                     let _minor = parts.next().unwrap();
                     let patch = parts.next().unwrap();
-                    // 可以有一个可选的“XXX-beta1”
+                    // 可以有一个可选的"XXX-beta1"
                     let patch = patch.split_once('-').map_or(patch, |(patch, _beta)| patch);
                     Some(patch.parse().expect("Failed to parse patch field"))
                 } else {
@@ -117,6 +117,7 @@ impl Ndk {
             .filter_map(|path| path.file_name().into_string().ok())
             .filter_map(|name| {
                 name.strip_prefix("android-")
+                    .and_then(|api| api.split('.').next())
                     .and_then(|api| api.parse::<u32>().ok())
             })
             .filter(|level| (min_platform_level..=max_platform_level).contains(level))
@@ -191,33 +192,51 @@ impl Ndk {
         self.platforms().iter().max().cloned().unwrap()
     }
 
-    /// 返回当前 [Google Play 所要求的] 平台“36”或更低版本（如果检测到的 SDK 尚不支持）。
+    /// 返回当前 [Google Play 所要求的] 平台"37"或更低版本（如果检测到的 SDK 尚不支持）。
     ///
     /// [Google Play 要求]: https://developer.android.com/distribute/best-practices/develop/target-sdk
     pub fn default_target_platform(&self) -> u32 {
-        self.highest_supported_platform().min(36)
+        self.highest_supported_platform().min(37)
     }
 
     pub fn platform_dir(&self, platform: u32) -> Result<PathBuf, NdkError> {
-        let dir = self
-            .android_sdk()
-            .join("platforms")
-            .join(format!("android-{}", platform));
-        if !dir.exists() {
-            return Err(NdkError::PlatformNotFound(platform));
+        let platforms_dir = self.android_sdk().join("platforms");
+        // Try exact match first (e.g. "android-36"), then versioned (e.g. "android-37.0")
+        let exact = platforms_dir.join(format!("android-{}", platform));
+        if exact.exists() {
+            return Ok(exact);
         }
-
-        Ok(dir)
+        if let Ok(entries) = std::fs::read_dir(&platforms_dir) {
+            for entry in entries.flatten() {
+                let name = entry.file_name();
+                let name = name.to_string_lossy();
+                if let Some(api) = name.strip_prefix("android-")
+                    && api.split('.').next() == Some(&platform.to_string())
+                {
+                    return Ok(entry.path());
+                }
+            }
+        }
+        Err(NdkError::PlatformNotFound(platform))
     }
 
     pub fn android_jar(&self, api_level: u32) -> Result<PathBuf, NdkError> {
-        let Some(android_jar) =
+        // Try via android_build crate first, then fall back to platform_dir lookup
+        if let Some(android_jar) =
             android_build::android_jar(Some(format!("android-{}", api_level).as_str()))
-        else {
-            return Err(NdkError::PlatformNotFound(api_level));
-        };
-
-        Ok(android_jar)
+        {
+            return Ok(android_jar);
+        }
+        // Handle new SDK naming like "android-37.0"
+        if let Some(android_jar) = self
+            .platform_dir(api_level)
+            .ok()
+            .map(|dir| dir.join("android.jar"))
+            .filter(|path| path.exists())
+        {
+            return Ok(android_jar);
+        }
+        Err(NdkError::PlatformNotFound(api_level))
     }
 
     //noinspection SpellCheckingInspection
