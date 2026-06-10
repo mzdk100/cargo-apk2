@@ -6,7 +6,7 @@ use {
         env::var,
         fs::{create_dir_all, read_dir, read_to_string, write},
         path::{Path, PathBuf},
-        process::Command,
+        process::{Command, Stdio},
     },
 };
 
@@ -168,7 +168,9 @@ impl Ndk {
             return Err(NdkError::CmdNotFound(tool.to_string()));
         }
 
-        Ok(Command::new(canonicalize(path)?))
+        let mut cmd = Command::new(canonicalize(path)?);
+        cmd.stdin(Stdio::null());
+        Ok(cmd)
     }
 
     pub fn platform_tool_path(&self, tool: &str) -> Result<PathBuf, NdkError> {
@@ -185,7 +187,9 @@ impl Ndk {
     }
 
     pub fn platform_tool(&self, tool: &str) -> Result<Command, NdkError> {
-        Ok(Command::new(self.platform_tool_path(tool)?))
+        let mut cmd = Command::new(self.platform_tool_path(tool)?);
+        cmd.stdin(Stdio::null());
+        Ok(cmd)
     }
 
     pub fn highest_supported_platform(&self) -> u32 {
@@ -393,12 +397,16 @@ impl Ndk {
 
     pub fn keytool(&self) -> Result<Command, NdkError> {
         if let Ok(keytool) = which::which(bin!("keytool")) {
-            return Ok(Command::new(keytool));
+            let mut cmd = Command::new(keytool);
+            cmd.stdin(Stdio::null());
+            return Ok(cmd);
         }
         if let Some(java) = android_build::java_home() {
             let keytool = java.join("bin").join(bin!("keytool"));
             if keytool.exists() {
-                return Ok(Command::new(keytool));
+                let mut cmd = Command::new(keytool);
+                cmd.stdin(Stdio::null());
+                return Ok(cmd);
             }
         }
 

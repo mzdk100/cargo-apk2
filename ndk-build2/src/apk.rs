@@ -12,7 +12,7 @@ use {
         fs::{copy, create_dir_all, read_dir, remove_dir_all, remove_file, rename},
         io::Error as IoError,
         path::{Path, PathBuf},
-        process::Command,
+        process::{Command, Stdio},
         str::from_utf8,
     },
 };
@@ -285,7 +285,11 @@ impl<'a> UnalignedApk<'a> {
                 // 如果d8不可用，尝试使用dx工具（旧版本）
                 println!("d8 not found, trying dx...");
                 let mut dx = Command::new("dx");
-                dx.arg("--dex").arg("--output").arg(&dex_file).arg(jar_file);
+                dx.stdin(Stdio::null())
+                    .arg("--dex")
+                    .arg("--output")
+                    .arg(&dex_file)
+                    .arg(jar_file);
 
                 dx.status()?.success()
             }
@@ -349,9 +353,10 @@ impl<'a> UnalignedApk<'a> {
 
                 {
                     let mut cmd = Command::new(&obj_copy);
-                    cmd.arg("--strip-debug");
-                    cmd.arg(path);
-                    cmd.arg(&out);
+                    cmd.stdin(Stdio::null())
+                        .arg("--strip-debug")
+                        .arg(path)
+                        .arg(&out);
 
                     if !cmd.status()?.success() {
                         return Err(NdkError::CmdFailed(Box::new(cmd)));
@@ -363,9 +368,10 @@ impl<'a> UnalignedApk<'a> {
 
                     {
                         let mut cmd = Command::new(&obj_copy);
-                        cmd.arg("--only-keep-debug");
-                        cmd.arg(path);
-                        cmd.arg(&dwarf_path);
+                        cmd.stdin(Stdio::null())
+                            .arg("--only-keep-debug")
+                            .arg(path)
+                            .arg(&dwarf_path);
 
                         if !cmd.status()?.success() {
                             return Err(NdkError::CmdFailed(Box::new(cmd)));
@@ -373,8 +379,9 @@ impl<'a> UnalignedApk<'a> {
                     }
 
                     let mut cmd = Command::new(obj_copy);
-                    cmd.arg(format!("--add-gnu-debuglink={}", dwarf_path.display()));
-                    cmd.arg(out);
+                    cmd.stdin(Stdio::null())
+                        .arg(format!("--add-gnu-debuglink={}", dwarf_path.display()))
+                        .arg(out);
 
                     if !cmd.status()?.success() {
                         return Err(NdkError::CmdFailed(Box::new(cmd)));

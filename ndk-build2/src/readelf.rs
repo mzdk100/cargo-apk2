@@ -4,7 +4,7 @@ use crate::target::Target;
 use std::collections::HashSet;
 use std::io::BufRead;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 impl<'a> UnalignedApk<'a> {
     pub fn add_lib_recursively(
@@ -68,6 +68,7 @@ impl<'a> UnalignedApk<'a> {
 /// List all linked shared libraries
 fn list_needed_libs(readelf_path: &Path, library_path: &Path) -> Result<HashSet<String>, NdkError> {
     let mut readelf = Command::new(readelf_path);
+    readelf.stdin(Stdio::null());
     let output = readelf.arg("-d").arg(library_path).output()?;
     if !output.status.success() {
         return Err(NdkError::CmdFailed(Box::new(readelf)));

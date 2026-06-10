@@ -4,7 +4,7 @@ use {
         env::{VarError, var, var_os},
         fs::{create_dir_all, write},
         path::Path,
-        process::Command,
+        process::{Command, Stdio},
     },
 };
 
@@ -18,6 +18,7 @@ pub fn cargo_ndk(
     let triple = target.rust_triple();
     let clang_target = format!("--target={}{}", target.ndk_llvm_triple(), sdk_version);
     let mut cargo = Command::new("cargo");
+    cargo.stdin(Stdio::null());
 
     const SEP: &str = "\x1f";
 

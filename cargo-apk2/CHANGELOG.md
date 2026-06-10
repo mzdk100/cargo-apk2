@@ -1,10 +1,14 @@
 # 已发布
 
+# 1.3.10 (2026-06-10)
+
+- 修复子进程可能因 stdin 阻塞导致构建挂起的问题（[#18](https://github.com/mzdk100/cargo-apk2/issues/18)）。所有外部命令（`jar`、`javac`、`kotlinc`、`scalac`、`groovyc`、`d8`、`aapt`、`zipalign`、`apksigner`、`keytool`、`readelf`、`objcopy`、`cargo` 等）现在都会关闭 stdin。
+
 # 1.3.9 (2026-05-28)
 
 - 默认 `target_sdk_version` 从 36 升级到 37。
 - 兼容 Android SDK 新的目录命名格式（如 `android-37.0`），支持检测和查找版本化的平台目录。
-- 更新依赖项：`android-build` 0.1.4、`eframe`/`egui` 0.34.3、`log` 0.4.30。
+- 更新依赖项：`android-build` 0.1.4、`eframe`/`egui` 0.34.3、`log` 0.4.32、`which` 8.0.3。
 
 # 1.3.8 (2026-05-18)
 

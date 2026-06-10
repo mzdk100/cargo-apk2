@@ -17,7 +17,7 @@ use {
         ffi::OsStr,
         fs::{create_dir_all, read_dir},
         path::{Path, PathBuf},
-        process::Command,
+        process::{Command, Stdio},
     },
 };
 
@@ -257,6 +257,7 @@ impl<'a> ApkBuilder<'a> {
                 .join("javac"),
         );
         javac
+            .stdin(Stdio::null())
             .arg("-d")
             .arg(&self.classes_dir)
             .arg("-classpath")
@@ -307,6 +308,7 @@ impl<'a> ApkBuilder<'a> {
                 }),
         );
         kotlinc
+            .stdin(Stdio::null())
             .arg("-d")
             .arg(&self.classes_dir)
             .arg("-classpath")
@@ -360,6 +362,7 @@ impl<'a> ApkBuilder<'a> {
                 }),
         );
         scalac
+            .stdin(Stdio::null())
             .arg("-d")
             .arg(&self.classes_dir)
             .arg("-classpath")
@@ -414,6 +417,7 @@ impl<'a> ApkBuilder<'a> {
                 }),
         );
         groovyc
+            .stdin(Stdio::null())
             .arg("-d")
             .arg(&self.classes_dir)
             .arg("-classpath")
@@ -460,7 +464,8 @@ impl<'a> ApkBuilder<'a> {
                 .join("bin")
                 .join(if cfg!(windows) { "jar.exe" } else { "jar" }),
         );
-        jar.arg("--create")
+        jar.stdin(Stdio::null())
+            .arg("--create")
             .arg("--file")
             .arg(path.as_ref())
             .arg("-C")
