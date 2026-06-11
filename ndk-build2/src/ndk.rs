@@ -413,6 +413,46 @@ impl Ndk {
         Err(NdkError::CmdNotFound("keytool".to_string()))
     }
 
+    /// Returns a `Command` for the `java` executable, used to run Java-based tools directly.
+    pub fn java_cmd(&self) -> Result<Command, NdkError> {
+        if let Ok(java) = which::which(bin!("java")) {
+            let mut cmd = Command::new(java);
+            cmd.stdin(Stdio::null());
+            return Ok(cmd);
+        }
+        if let Some(java_home) = android_build::java_home() {
+            let java = java_home.join("bin").join(bin!("java"));
+            if java.exists() {
+                let mut cmd = Command::new(java);
+                cmd.stdin(Stdio::null());
+                return Ok(cmd);
+            }
+        }
+        Err(NdkError::CmdNotFound("java".to_string()))
+    }
+
+    /// Returns the classpath for running d8 directly via Java, bypassing the d8 shell script.
+    /// This avoids issues with shell script compatibility (e.g. CRLF line endings) on Linux/macOS.
+    pub fn d8_classpath(&self) -> Result<String, NdkError> {
+        let lib_dir = self.build_tools().join("lib");
+        let mut classpath = String::new();
+        if let Ok(entries) = std::fs::read_dir(&lib_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().is_some_and(|ext| ext == "jar") {
+                    if !classpath.is_empty() {
+                        classpath.push(':');
+                    }
+                    classpath.push_str(&path.to_string_lossy());
+                }
+            }
+        }
+        if classpath.is_empty() {
+            return Err(NdkError::PathNotFound(lib_dir));
+        }
+        Ok(classpath)
+    }
+
     //noinspection SpellCheckingInspection
     pub fn debug_key(&self) -> Result<Key, NdkError> {
         let path = self.android_user_home()?.join("debug.keystore");

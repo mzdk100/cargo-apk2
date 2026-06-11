@@ -265,9 +265,34 @@ impl<'a> UnalignedApk<'a> {
             .min_sdk_version
             .unwrap_or_else(|| self.config.ndk.default_target_platform());
 
-        let mut d8 = self
-            .config()
-            .build_tool(if cfg!(windows) { "d8.bat" } else { "d8" })?;
+        // 直接通过Java运行d8，绕过shell脚本以避免Linux/macOS上的脚本兼容性问题
+        // （如CRLF行尾、bash版本差异等）
+        let mut d8 = match self.config.ndk.java_cmd() {
+            Ok(mut cmd) => {
+                match self.config.ndk.d8_classpath() {
+                    Ok(classpath) => {
+                        cmd.arg("-classpath").arg(&classpath).arg("com.android.tools.r8.D8");
+                        cmd
+                    }
+                    Err(_) => {
+                        // 如果无法构建classpath，回退到shell脚本方式
+                        let mut fallback = self
+                            .config()
+                            .build_tool(if cfg!(windows) { "d8.bat" } else { "d8" })?;
+                        fallback.current_dir(&self.config.build_dir);
+                        fallback
+                    }
+                }
+            }
+            Err(_) => {
+                // 如果找不到java，回退到shell脚本方式
+                let mut fallback = self
+                    .config()
+                    .build_tool(if cfg!(windows) { "d8.bat" } else { "d8" })?;
+                fallback.current_dir(&self.config.build_dir);
+                fallback
+            }
+        };
         d8.arg("--output")
             .arg(&self.config.build_dir)
             .arg("--intermediate")
@@ -278,9 +303,15 @@ impl<'a> UnalignedApk<'a> {
             .arg(jar_file);
 
         let dex_file = self.config.build_dir.join("classes.dex");
-        let d8_result = d8.status();
-        let success = match d8_result {
-            Ok(status) => status.success(),
+        let d8_output = d8.output();
+        let success = match d8_output {
+            Ok(output) => {
+                if !output.status.success() {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    eprintln!("d8 failed:\n{stderr}");
+                }
+                output.status.success()
+            }
             Err(_) => {
                 // 如果d8不可用，尝试使用dx工具（旧版本）
                 println!("d8 not found, trying dx...");
@@ -291,7 +322,12 @@ impl<'a> UnalignedApk<'a> {
                     .arg(&dex_file)
                     .arg(jar_file);
 
-                dx.status()?.success()
+                let dx_output = dx.output()?;
+                if !dx_output.status.success() {
+                    let stderr = String::from_utf8_lossy(&dx_output.stderr);
+                    eprintln!("dx failed:\n{stderr}");
+                }
+                dx_output.status.success()
             }
         };
 

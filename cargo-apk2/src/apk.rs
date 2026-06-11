@@ -472,7 +472,10 @@ impl<'a> ApkBuilder<'a> {
             .arg(&self.classes_dir)
             .arg(".");
 
-        if !jar.status()?.success() {
+        let output = jar.output()?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            eprintln!("jar failed:\n{stderr}");
             return Err(Error::CmdFailed(Box::new(jar)));
         }
 

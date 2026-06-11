@@ -1,8 +1,10 @@
 # 已发布
 
-# 1.3.10 (2026-06-10)
+# 1.3.10 (2026-06-11)
 
 - 修复子进程可能因 stdin 阻塞导致构建挂起的问题（[#18](https://github.com/mzdk100/cargo-apk2/issues/18)）。所有外部命令（`jar`、`javac`、`kotlinc`、`scalac`、`groovyc`、`d8`、`aapt`、`zipalign`、`apksigner`、`keytool`、`readelf`、`objcopy`、`cargo` 等）现在都会关闭 stdin。
+- d8 命令改为直接通过 Java 运行 `d8.jar`，绕过 shell 脚本以避免 Linux/macOS 上的脚本兼容性问题。
+- 改进 `jar` 和 `d8` 命令的错误输出，失败时显示详细错误信息。
 
 # 1.3.9 (2026-05-28)
 
