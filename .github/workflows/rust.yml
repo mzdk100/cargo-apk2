@@ -88,10 +88,10 @@ jobs:
   android_emulator:
     name: hello_world example on emulator
     needs: build
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        source_os: [ubuntu-latest, windows-latest, local]
+        source_os: [ubuntu-latest, windows-latest]
     env:
       api-level: 35
       emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
@@ -104,18 +104,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
       - uses: actions/download-artifact@v4
         name: Download hello_world APK
-        if: ${{ matrix.source_os != 'local' }}
         with:
           name: hello_world_${{ matrix.source_os }}_x86_64-linux-android
           path: ./downloaded-apk
-
-      - name: Install `cargo-apk2` and add `x86_64-linux-android` target
-        if: ${{ matrix.source_os == 'local' }}
-        run: |
-          cargo install --path cargo-apk2
-          rustup target add x86_64-linux-android
 
       - name: AVD cache
         uses: actions/cache@v4
@@ -125,11 +124,11 @@ jobs:
             ~/.android/avd/*
             ~/.android/adb*
           # Bump the trailing number when making changes to the emulator setup below
-          key: avd-${{ env.api-level }}-1
+          key: avd-${{ env.api-level }}-2
 
       - name: create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@v2.37.0
         with:
           api-level: ${{ env.api-level }}
           arch: ${{ env.arch }}
@@ -141,7 +140,7 @@ jobs:
           script: echo "Generated AVD snapshot for caching."
 
       - name: Start hello_world example
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@v2.37.0
         with:
           api-level: ${{ env.api-level }}
           arch: ${{ env.arch }}

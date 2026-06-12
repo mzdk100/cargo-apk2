@@ -16,15 +16,22 @@ else
     adb shell am start -a android.intent.action.MAIN -n "rust.ndk_examples/android.app.NativeActivity"
 fi
 
+# Wait for the app to start and produce output
 sleep 30
 
-adb logcat *:E hello_world:V -d | tee ~/logcat.log
+# Dump logcat with broader filter to capture both `rust` tag (from android_logger)
+# and `hello_world` tag, plus System.out for println! output
+adb logcat -d | tee ~/logcat.log
 
-if grep 'hello world' ~/logcat.log;
+echo "--- Searching for 'hello world' in logcat ---"
+if grep -i 'hello world' ~/logcat.log;
 then
     echo "App running"
 else
     echo "::error::App not running"
+    # Show recent logcat entries for debugging
+    echo "--- Recent logcat entries ---"
+    adb logcat -d -t 50
     exit 1
 fi
 

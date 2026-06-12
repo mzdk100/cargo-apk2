@@ -271,14 +271,18 @@ impl<'a> UnalignedApk<'a> {
             Ok(mut cmd) => {
                 match self.config.ndk.d8_classpath() {
                     Ok(classpath) => {
-                        cmd.arg("-classpath").arg(&classpath).arg("com.android.tools.r8.D8");
+                        cmd.arg("-classpath")
+                            .arg(&classpath)
+                            .arg("com.android.tools.r8.D8");
                         cmd
                     }
                     Err(_) => {
                         // 如果无法构建classpath，回退到shell脚本方式
-                        let mut fallback = self
-                            .config()
-                            .build_tool(if cfg!(windows) { "d8.bat" } else { "d8" })?;
+                        let mut fallback = self.config().build_tool(if cfg!(windows) {
+                            "d8.bat"
+                        } else {
+                            "d8"
+                        })?;
                         fallback.current_dir(&self.config.build_dir);
                         fallback
                     }
@@ -286,9 +290,9 @@ impl<'a> UnalignedApk<'a> {
             }
             Err(_) => {
                 // 如果找不到java，回退到shell脚本方式
-                let mut fallback = self
-                    .config()
-                    .build_tool(if cfg!(windows) { "d8.bat" } else { "d8" })?;
+                let mut fallback =
+                    self.config()
+                        .build_tool(if cfg!(windows) { "d8.bat" } else { "d8" })?;
                 fallback.current_dir(&self.config.build_dir);
                 fallback
             }

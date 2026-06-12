@@ -441,7 +441,7 @@ impl Ndk {
                 let path = entry.path();
                 if path.extension().is_some_and(|ext| ext == "jar") {
                     if !classpath.is_empty() {
-                        classpath.push(':');
+                        classpath.push(if cfg!(windows) { ';' } else { ':' });
                     }
                     classpath.push_str(&path.to_string_lossy());
                 }
