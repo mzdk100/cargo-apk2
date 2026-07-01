@@ -579,7 +579,7 @@ impl Apk {
     }
 
     //noinspection SpellCheckingInspection
-    pub fn uidof(&self, device_serial: Option<&str>) -> Result<u32, NdkError> {
+    pub fn uidof(&self, device_serial: Option<&str>) -> Result<Vec<u32>, NdkError> {
         let mut adb = self.ndk.adb(device_serial)?;
         adb.arg("shell")
             .arg("pm")
@@ -607,7 +607,14 @@ impl Apk {
         let uid = uid
             .strip_prefix("uid:")
             .ok_or(NdkError::UidNotInOutput(output.to_owned()))?;
-        uid.parse()
-            .map_err(|e| NdkError::NotAUid(e, uid.to_owned()))
+        // 在真机调试模式下，`pm list package -U` 可能返回多个用逗号分隔的 UID，
+        // 例如 `uid:10096,1110096`。解析所有 UID，确保 logcat 不会丢失调试日志。
+        // 详见 issue #19。
+        uid.split(',')
+            .map(|u| {
+                u.parse::<u32>()
+                    .map_err(|e| NdkError::NotAUid(e, u.to_owned()))
+            })
+            .collect()
     }
 }

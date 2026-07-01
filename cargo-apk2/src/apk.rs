@@ -891,7 +891,7 @@ impl<'a> ApkBuilder<'a> {
             .map(|activity| activity.name.as_str());
 
         apk.start(self.device_serial.as_deref(), activity)?;
-        let uid = apk.uidof(self.device_serial.as_deref())?;
+        let uids = apk.uidof(self.device_serial.as_deref())?;
 
         if !no_logcat {
             self.ndk
@@ -912,8 +912,13 @@ impl<'a> ApkBuilder<'a> {
             // 添加颜色支持
             adb.arg("color");
 
-            // 过滤指定应用的日志
-            adb.arg("--uid").arg(uid.to_string());
+            // 过滤指定应用的日志（调试模式下可能包含多个 UID）
+            let uid_filter = uids
+                .iter()
+                .map(u32::to_string)
+                .collect::<Vec<_>>()
+                .join(",");
+            adb.arg("--uid").arg(uid_filter);
 
             adb.status()?;
         }

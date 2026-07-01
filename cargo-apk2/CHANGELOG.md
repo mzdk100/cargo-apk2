@@ -1,5 +1,10 @@
 # 已发布
 
+# 1.3.11 (2026-07-02)
+
+- 修复真机调试模式下 `cargo apk2 run` 崩溃的问题（[#19](https://github.com/mzdk100/cargo-apk2/issues/19)）。真机调试模式下 `pm list package -U` 可能返回多个逗号分隔的 UID（如 `uid:10096,1110096`），现在会解析所有 UID 并传递给 logcat，确保不会丢失调试日志。
+- 更新依赖项：`eframe` 0.35.0、`quick-xml` 0.41.0。
+
 # 1.3.10 (2026-06-11)
 
 - 修复子进程可能因 stdin 阻塞导致构建挂起的问题（[#18](https://github.com/mzdk100/cargo-apk2/issues/18)）。所有外部命令（`jar`、`javac`、`kotlinc`、`scalac`、`groovyc`、`d8`、`aapt`、`zipalign`、`apksigner`、`keytool`、`readelf`、`objcopy`、`cargo` 等）现在都会关闭 stdin。
