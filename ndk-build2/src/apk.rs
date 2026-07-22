@@ -586,6 +586,8 @@ impl Apk {
             .arg("list")
             .arg("package")
             .arg("-U")
+            .arg("--user")
+            .arg("0")
             .arg(&self.package_name);
         let output = adb.output()?;
 
