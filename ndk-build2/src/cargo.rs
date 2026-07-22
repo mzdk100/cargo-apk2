@@ -118,7 +118,7 @@ pub fn cargo_ndk(
 
 fn cargo_env_target_cfg(tool: &str, target: &str) -> String {
     let utarget = target.replace('-', "_");
-    let env = format!("CARGO_TARGET_{}_{}", &utarget, tool);
+    let env = format!("CARGO_TARGET_{}_{}", utarget, tool);
     env.to_uppercase()
 }
 

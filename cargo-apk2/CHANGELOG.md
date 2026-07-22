@@ -1,5 +1,9 @@
 # 已发布
 
+# 1.3.12 (2026-07-23)
+
+- 更新依赖项：`anyhow` 1.0.104、`clap` 4.6.4、`env_logger` 0.11.11、`log` 0.4.33、`serde` 1.0.229、`thiserror` 2.0.19、`toml` 1.1.3、`which` 8.0.5。
+
 # 1.3.11 (2026-07-02)
 
 - 修复真机调试模式下 `cargo apk2 run` 崩溃的问题（[#19](https://github.com/mzdk100/cargo-apk2/issues/19)）。真机调试模式下 `pm list package -U` 可能返回多个逗号分隔的 UID（如 `uid:10096,1110096`），现在会解析所有 UID 并传递给 logcat，确保不会丢失调试日志。

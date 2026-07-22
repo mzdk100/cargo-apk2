@@ -501,7 +501,7 @@ impl<'a> UnsignedApk<'a> {
             .arg("--ks")
             .arg(&key.path)
             .arg("--ks-pass")
-            .arg(format!("pass:{}", &key.password))
+            .arg(format!("pass:{}", key.password))
             .arg(self.0.apk());
         if !apksigner.status()?.success() {
             return Err(NdkError::CmdFailed(Box::new(apksigner)));
@@ -579,13 +579,15 @@ impl Apk {
     }
 
     //noinspection SpellCheckingInspection
-    pub fn uidof(&self, device_serial: Option<&str>) -> Result<Vec<u32>, NdkError> {
+    pub fn uidof(&self, device_serial: Option<&str>) -> Result<u32, NdkError> {
         let mut adb = self.ndk.adb(device_serial)?;
         adb.arg("shell")
             .arg("pm")
             .arg("list")
             .arg("package")
             .arg("-U")
+            .arg("--user")
+            .arg("0")
             .arg(&self.package_name);
         let output = adb.output()?;
 
@@ -607,14 +609,10 @@ impl Apk {
         let uid = uid
             .strip_prefix("uid:")
             .ok_or(NdkError::UidNotInOutput(output.to_owned()))?;
-        // 在真机调试模式下，`pm list package -U` 可能返回多个用逗号分隔的 UID，
-        // 例如 `uid:10096,1110096`。解析所有 UID，确保 logcat 不会丢失调试日志。
-        // 详见 issue #19。
-        uid.split(',')
-            .map(|u| {
-                u.parse::<u32>()
-                    .map_err(|e| NdkError::NotAUid(e, u.to_owned()))
-            })
-            .collect()
+        // `pm list package -U --user 0` 只查询主用户（user 0），返回的 UID 总是单个，
+        // 例如 `uid:10096`。`--user 0` 同时修复了 #19（多用户逗号分隔 UID 解析失败）
+        // 与 #20（无法访问 Secure Folder 等次级用户导致的 SecurityException）。
+        uid.parse()
+            .map_err(|e| NdkError::NotAUid(e, uid.to_owned()))
     }
 }
