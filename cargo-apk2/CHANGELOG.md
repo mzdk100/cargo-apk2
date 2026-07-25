@@ -1,7 +1,13 @@
 # 已发布
 
-# 1.3.12 (2026-07-23)
+# 1.3.14 (2026-07-26)
 
+- 编译 Kotlin 源码时把 `kotlin-stdlib` 的类打包进 APK 的 dex，修复运行时因缺少 Kotlin 标准库类（如 `kotlin/jvm/internal/Intrinsics`）导致的 `NoClassDefFoundError`（[#22](https://github.com/mzdk100/cargo-apk2/pull/22)）。
+- 更新依赖项：刷新 `Cargo.lock` 传递依赖（`cc` 1.4.0、`either` 1.17.0、`foreign-types-macros` 0.2.4、`wayland-*` 等）。
+
+# 1.3.13 (2026-07-23)
+
+- 修复多用户设备上的 UID 解析问题：执行 `pm list package -U` 获取 UID 时改用 `--user 0`，确保为主用户返回单一 UID，修复多用户场景下的逗号分隔 UID 解析失败（[#19](https://github.com/mzdk100/cargo-apk2/issues/19)）以及访问次要用户配置时的 `SecurityException`（#20）。
 - 更新依赖项：`anyhow` 1.0.104、`clap` 4.6.4、`env_logger` 0.11.11、`log` 0.4.33、`serde` 1.0.229、`thiserror` 2.0.19、`toml` 1.1.3、`which` 8.0.5。
 
 # 1.3.11 (2026-07-02)
