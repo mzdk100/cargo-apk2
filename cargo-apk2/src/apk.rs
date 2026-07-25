@@ -15,7 +15,7 @@ use {
     std::{
         env::var,
         ffi::OsStr,
-        fs::{create_dir_all, read_dir},
+        fs::{copy, create_dir_all, read_dir, remove_dir_all},
         path::{Path, PathBuf},
         process::{Command, Stdio},
     },
@@ -334,6 +334,77 @@ impl<'a> ApkBuilder<'a> {
             return Err(Error::CmdFailed(Box::new(kotlinc)));
         }
 
+        self.bundle_kotlin_stdlib()?;
+
+        Ok(())
+    }
+
+    /// After compiling .kt sources, copy `kotlin-stdlib`'s classes into
+    /// `classes_dir` so they end up in the final dex. `kotlinc -d classes_dir`
+    /// only writes the classes it compiled; it does not copy the runtime
+    /// classes those classes depend on (e.g. `kotlin.jvm.internal.Intrinsics`),
+    /// which crashes at runtime with `NoClassDefFoundError` if omitted.
+    fn bundle_kotlin_stdlib(&self) -> Result<(), Error> {
+        let stdlib_jar = self
+            .kotlin_home
+            .as_ref()
+            .ok_or(Error::KotlinNotFound)?
+            .join("lib")
+            .join("kotlin-stdlib.jar");
+        if !stdlib_jar.exists() {
+            return Err(Error::PathNotFound(stdlib_jar));
+        }
+
+        let jar_tool = self
+            .java_home
+            .as_ref()
+            .ok_or(Error::JdkNotFound)?
+            .join("bin")
+            .join(if cfg!(windows) { "jar.exe" } else { "jar" });
+
+        let scratch = self.classes_dir.join(".kotlin-stdlib-extract");
+        let _ = remove_dir_all(&scratch);
+        create_dir_all(&scratch)?;
+
+        let mut jar = Command::new(&jar_tool);
+        jar.stdin(Stdio::null())
+            .arg("xf")
+            .arg(&stdlib_jar)
+            .current_dir(&scratch);
+        if !jar.status()?.success() {
+            return Err(Error::CmdFailed(Box::new(jar)));
+        }
+
+        // Manifest / .kotlin_module / multi-release module-info.class have no
+        // business being dexed.
+        let meta_inf = scratch.join("META-INF");
+        if meta_inf.exists() {
+            remove_dir_all(&meta_inf)?;
+        }
+
+        Self::copy_class_files_recursive(&scratch, &self.classes_dir)?;
+        remove_dir_all(&scratch)?;
+        Ok(())
+    }
+
+    fn copy_class_files_recursive<P, Q>(src: P, dest: Q) -> Result<(), Error>
+    where
+        P: AsRef<Path>,
+        Q: AsRef<Path>,
+    {
+        let (src, dest) = (src.as_ref(), dest.as_ref());
+        for entry in read_dir(src)? {
+            let entry = entry?;
+            let path = entry.path();
+            let target = dest.join(entry.file_name());
+
+            if path.is_dir() {
+                create_dir_all(&target)?;
+                Self::copy_class_files_recursive(&path, &target)?;
+            } else if path.extension() == Some(OsStr::new("class")) {
+                copy(&path, &target)?;
+            }
+        }
         Ok(())
     }
 
