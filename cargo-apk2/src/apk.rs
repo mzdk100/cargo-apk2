@@ -632,6 +632,11 @@ impl<'a> ApkBuilder<'a> {
             .runtime_libs
             .as_ref()
             .map(|libs| dunce::simplified(&crate_path.join(libs)).to_owned());
+        let manifest_override = self
+            .manifest
+            .manifest_override
+            .as_ref()
+            .map(|xml| dunce::simplified(&crate_path.join(xml)).to_owned());
         let apk_name = self
             .manifest
             .apk_name
@@ -653,6 +658,7 @@ impl<'a> ApkBuilder<'a> {
             disable_aapt_compression: is_debug_profile,
             strip: self.manifest.strip,
             reverse_port_forward: self.manifest.reverse_port_forward.clone(),
+            manifest_override: manifest_override.clone(),
         };
         let mut apk = config.create_apk(&gen_java_dir)?;
 
