@@ -85,6 +85,12 @@ Make sure you have an Android device connected via `adb` and have installed `car
 # Use `aapt2` instead of `aapt` for compiling application resources.
 use_aapt2 = true
 
+# You should not need to use this setting, but you might need to if you are attempting to use Android Manifest features
+# that are currently not supported by `cargo-apk2`yet. This setting will cause `cargo-apk2` to COPY the
+# specified AndroidManifest.xml file instead of generating one from the manifest settings in Cargo.toml.
+# Note: you still need to define all the Cargo.toml basics as the tooling requires them for other purposes. 
+mainfest_override = "path/to/AndroidManifest.xml"
+
 # Specifies the package property of the manifest.
 # See https://developer.android.com/guide/topics/manifest/manifest-element#package
 package = "com.foo.bar"
