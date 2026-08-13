@@ -81,6 +81,11 @@ cargo apk2 run
 # 以 aapt2 构建工具取代 aapt 用于编译资源。
 use_aapt2 = true
 
+# 通常情况下您不需要使用此设置；但当您尝试使用 `cargo-apk2` 当前尚不支持的 Android Manifest 特性时可能用得上。
+# 启用后，`cargo-apk2` 将直接复制此处指定的 AndroidManifest.xml 文件，而不是根据 Cargo.toml 中的 manifest 设置自动生成。
+# 注意：您仍然需要在 Cargo.toml 中定义所有基础配置，因为工具的其他功能仍依赖这些配置。
+mainfest_override = "path/to/AndroidManifest.xml"
+
 # 指定 Android Manifest 中的包名属性。
 # 参见 https://developer.android.google.cn/guide/topics/manifest/manifest-element#package
 package = "com.foo.bar"

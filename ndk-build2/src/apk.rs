@@ -81,7 +81,7 @@ impl ApkConfig {
     {
         create_dir_all(&self.build_dir)?;
         if let Some(manifest_override) = &self.manifest_override {
-            self.copy_file(&manifest_override, "AndroidManifest.xml".as_ref())?;
+            self.copy_file(manifest_override, "AndroidManifest.xml".as_ref())?;
         } else {
             self.manifest.write_to(&self.build_dir)?;
         }

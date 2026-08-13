@@ -1,5 +1,10 @@
 # 已发布
 
+# 1.4.0 (2026-08-13)
+
+- 合并 [#23](https://github.com/mzdk100/cargo-apk2/pull/23)：新增 `manifest_override` 配置项，允许直接复制自定义的 `AndroidManifest.xml` 文件，而非由工具自动生成（用于 `cargo-apk2` 暂不支持的 Manifest 特性）。
+- 更新依赖项：`clap` 4.6.6、`toml` 1.1.4、`thiserror` 2.0.20、`libc` 1.0.0-alpha.4 等；并刷新 `Cargo.lock` 传递依赖（`wasm-bindgen` 0.2.127、`zbus` 5.19.0 等）。
+
 # 1.3.14 (2026-07-26)
 
 - 编译 Kotlin 源码时把 `kotlin-stdlib` 的类打包进 APK 的 dex，修复运行时因缺少 Kotlin 标准库类（如 `kotlin/jvm/internal/Intrinsics`）导致的 `NoClassDefFoundError`（[#22](https://github.com/mzdk100/cargo-apk2/pull/22)）。
