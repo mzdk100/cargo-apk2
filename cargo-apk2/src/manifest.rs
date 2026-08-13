@@ -35,6 +35,7 @@ pub(crate) struct Manifest {
     pub(crate) signing: HashMap<String, Signing>,
     pub(crate) reverse_port_forward: HashMap<String, String>,
     pub(crate) strip: StripConfig,
+    pub(crate) manifest_override: Option<PathBuf>,
 }
 
 impl Manifest {
@@ -68,6 +69,7 @@ impl Manifest {
             signing: metadata.signing,
             reverse_port_forward: metadata.reverse_port_forward,
             strip: metadata.strip,
+            manifest_override: metadata.manifest_override,
         })
     }
 }
@@ -113,6 +115,7 @@ struct AndroidMetadata {
     apk_name: Option<String>,
     /// 使用aapt2编译和处理资源（默认开启）
     use_aapt2: Option<bool>,
+    manifest_override: Option<PathBuf>,
     #[serde(flatten)]
     android_manifest: AndroidManifest,
     #[serde(default)]

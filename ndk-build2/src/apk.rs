@@ -47,6 +47,7 @@ pub struct ApkConfig {
     pub disable_aapt_compression: bool,
     pub strip: StripConfig,
     pub reverse_port_forward: HashMap<String, String>,
+    pub manifest_override: Option<PathBuf>,
 }
 
 impl ApkConfig {
@@ -68,12 +69,22 @@ impl ApkConfig {
         self.build_dir.join(format!("{}.apk", self.apk_name))
     }
 
+    pub fn copy_file(&self, src: &Path, dst: &Path) -> Result<(), NdkError> {
+        let dst_path = self.build_dir.join(dst);
+        copy(src, dst_path)?;
+        Ok(())
+    }
+
     pub fn create_apk<P>(&self, gen_java_dir: P) -> Result<UnalignedApk<'_>, NdkError>
     where
         P: AsRef<Path>,
     {
         create_dir_all(&self.build_dir)?;
-        self.manifest.write_to(&self.build_dir)?;
+        if let Some(manifest_override) = &self.manifest_override {
+            self.copy_file(&manifest_override, "AndroidManifest.xml".as_ref())?;
+        } else {
+            self.manifest.write_to(&self.build_dir)?;
+        }
 
         let target_sdk_version = self
             .manifest
