@@ -5,6 +5,7 @@ use {
         collections::HashMap,
         env::var,
         fs::{create_dir_all, read_dir, read_to_string, write},
+        io::{Error as IoError, ErrorKind},
         path::{Path, PathBuf},
         process::{Command, Stdio},
     },
@@ -12,6 +13,14 @@ use {
 
 /// 通过 [`Ndk::debug_key`] 创建默认 `debug.keystore` 时使用的默认密码
 pub const DEFAULT_DEV_KEYSTORE_PASSWORD: &str = "android";
+
+/// 构造表示“NDK 目录无效”的错误，用于替代 panic（issue #24）。
+fn invalid_ndk(ndk_path: &Path, reason: impl Into<String>) -> NdkError {
+    NdkError::InvalidNdk(
+        ndk_path.to_owned(),
+        IoError::new(ErrorKind::InvalidData, reason.into()),
+    )
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Ndk {
@@ -77,40 +86,62 @@ impl Ndk {
             .ok_or(NdkError::BuildToolsNotFound)?;
 
         let build_tag = read_to_string(ndk_path.join("source.properties"))
-            .expect("Failed to read source.properties");
+            .map_err(|e| NdkError::InvalidNdk(ndk_path.clone(), e))?;
 
         let build_tag = build_tag
             .split('\n')
             .find_map(|line| {
-                let (key, value) = line
-                    .split_once('=')
-                    .expect("Failed to parse `key = value` from source.properties");
-                if key.trim() == "Pkg.Revision" {
-                    // AOSP 将不断增加的版本号写入补丁字段。此数字会随着 NDK 版本的推移而不断增加。
-                    let mut parts = value.trim().split('.');
-                    let _major = parts.next().unwrap();
-                    let _minor = parts.next().unwrap();
-                    let patch = parts.next().unwrap();
-                    // 可以有一个可选的"XXX-beta1"
-                    let patch = patch.split_once('-').map_or(patch, |(patch, _beta)| patch);
-                    Some(patch.parse().expect("Failed to parse patch field"))
-                } else {
-                    None
+                let (key, value) = line.split_once('=')?;
+                if key.trim() != "Pkg.Revision" {
+                    return None;
                 }
+                // AOSP 将不断增加的版本号写入补丁字段。此数字会随着 NDK 版本的推移而不断增加。
+                let mut parts = value.trim().split('.');
+                let _major = parts.next()?;
+                let _minor = parts.next()?;
+                let patch = parts.next()?;
+                // 可以有一个可选的"XXX-beta1"
+                let patch = patch.split_once('-').map_or(patch, |(patch, _beta)| patch);
+                patch.parse().ok()
             })
-            .expect("No `Pkg.Revision` in source.properties");
+            .ok_or_else(|| {
+                invalid_ndk(
+                    &ndk_path,
+                    "`source.properties` contains no valid `Pkg.Revision` entry",
+                )
+            })?;
 
-        let ndk_platforms = read_to_string(ndk_path.join("build/core/platforms.mk"))?;
-        let ndk_platforms = ndk_platforms
+        let platforms_mk = read_to_string(ndk_path.join("build/core/platforms.mk"))
+            .map_err(|e| NdkError::InvalidNdk(ndk_path.clone(), e))?;
+        let ndk_platforms: HashMap<_, _> = platforms_mk
             .split('\n')
-            .map(|s| s.split_once(" := ").unwrap())
-            .collect::<HashMap<_, _>>();
+            .filter_map(|s| s.split_once(" := "))
+            .collect();
 
-        let min_platform_level = ndk_platforms["NDK_MIN_PLATFORM_LEVEL"].parse::<u32>()?;
-        let max_platform_level = ndk_platforms["NDK_MAX_PLATFORM_LEVEL"].parse::<u32>()?;
+        let platform_level = |key: &str| -> Result<u32, NdkError> {
+            ndk_platforms
+                .get(key)
+                .ok_or_else(|| {
+                    invalid_ndk(
+                        &ndk_path,
+                        format!("`build/core/platforms.mk` contains no `{key}` entry"),
+                    )
+                })?
+                .trim()
+                .parse()
+                .map_err(|e| {
+                    invalid_ndk(
+                        &ndk_path,
+                        format!("could not parse `{key}` in `build/core/platforms.mk`: {e}"),
+                    )
+                })
+        };
+
+        let min_platform_level = platform_level("NDK_MIN_PLATFORM_LEVEL")?;
+        let max_platform_level = platform_level("NDK_MAX_PLATFORM_LEVEL")?;
 
         let platforms_dir = sdk_path.join("platforms");
-        let platforms: Vec<u32> = read_dir(&platforms_dir)
+        let installed_platforms: Vec<u32> = read_dir(&platforms_dir)
             .or(Err(NdkError::PathNotFound(platforms_dir)))?
             .filter_map(|path| path.ok())
             .filter(|path| path.path().is_dir())
@@ -120,11 +151,32 @@ impl Ndk {
                     .and_then(|api| api.split('.').next())
                     .and_then(|api| api.parse::<u32>().ok())
             })
+            .collect();
+
+        let platforms: Vec<u32> = installed_platforms
+            .iter()
+            .copied()
             .filter(|level| (min_platform_level..=max_platform_level).contains(level))
             .collect();
 
         if platforms.is_empty() {
-            return Err(NdkError::NoPlatformFound);
+            return Err(if installed_platforms.is_empty() {
+                NdkError::NoPlatformFound
+            } else {
+                // 已安装 platform 但均不在 NDK 支持的 API 范围内（issue #25）。
+                let mut installed = installed_platforms.clone();
+                installed.sort_unstable();
+                NdkError::NoSupportedPlatform {
+                    installed: installed
+                        .iter()
+                        .map(|level| level.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    ndk_path: ndk_path.clone(),
+                    min: min_platform_level,
+                    max: max_platform_level,
+                }
+            });
         }
 
         Ok(Self {

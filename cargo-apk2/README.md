@@ -89,7 +89,7 @@ use_aapt2 = true
 # that are currently not supported by `cargo-apk2`yet. This setting will cause `cargo-apk2` to COPY the
 # specified AndroidManifest.xml file instead of generating one from the manifest settings in Cargo.toml.
 # Note: you still need to define all the Cargo.toml basics as the tooling requires them for other purposes. 
-mainfest_override = "path/to/AndroidManifest.xml"
+manifest_override = "path/to/AndroidManifest.xml"
 
 # Specifies the package property of the manifest.
 # See https://developer.android.com/guide/topics/manifest/manifest-element#package

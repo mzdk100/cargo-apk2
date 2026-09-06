@@ -1,5 +1,12 @@
 # 已发布
 
+# 1.4.1 (2026-09-07)
+
+- 修复 [#24](https://github.com/mzdk100/cargo-apk2/issues/24)：`ANDROID_NDK_ROOT` 指向无效的 NDK 目录（如 `<sdk>/ndk` 而非 `<sdk>/ndk/<版本>`）时不再 panic，改为返回可读错误并提示正确的配置方式。
+- 修复 [#25](https://github.com/mzdk100/cargo-apk2/issues/25)：已安装的 SDK platform 均不在当前 NDK 支持的 API 范围内时，不再误报 "Android SDK has no platforms installed."，改为明确列出已安装 platform、NDK 支持范围与修复建议。
+- 更新依赖项：`log` 0.4.34、`which` 8.0.6、`winit` 0.31.0-beta.3；并刷新 `Cargo.lock` 传递依赖（`zvariant` 5.15.0 等）。
+- 修正 README 中 `mainfest_override` 的拼写错误（应为 `manifest_override`）。
+
 # 1.4.0 (2026-08-13)
 
 - 合并 [#23](https://github.com/mzdk100/cargo-apk2/pull/23)：新增 `manifest_override` 配置项，允许直接复制自定义的 `AndroidManifest.xml` 文件，而非由工具自动生成（用于 `cargo-apk2` 暂不支持的 Manifest 特性）。

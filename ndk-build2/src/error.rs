@@ -20,6 +20,13 @@ pub enum NdkError {
     )]
     NdkNotFound,
     #[error(
+        "Path `{0:?}` is not a valid Android NDK installation: {1}. \
+        If you set the `ANDROID_NDK_ROOT` environment variable manually, \
+        it must point to the versioned NDK directory \
+        (e.g. `<sdk>/ndk/27.3.13750724`), not the `<sdk>/ndk` folder itself."
+    )]
+    InvalidNdk(PathBuf, IoError),
+    #[error(
         "GNU toolchain binary `{gnu_bin}` nor LLVM toolchain binary `{llvm_bin}` found in `{toolchain_path:?}`."
     )]
     ToolchainBinaryNotFound {
@@ -35,6 +42,18 @@ pub enum NdkError {
     BuildToolsNotFound,
     #[error("Android SDK has no platforms installed.")]
     NoPlatformFound,
+    #[error(
+        "None of the installed Android SDK platforms ({installed}) are within the API level \
+        range {min}..={max} supported by the NDK at `{ndk_path:?}`. \
+        Install a platform within this range (e.g. `sdkmanager \"platforms;android-{max}\"`) \
+        or use a newer NDK that supports your target API level."
+    )]
+    NoSupportedPlatform {
+        installed: String,
+        ndk_path: PathBuf,
+        min: u32,
+        max: u32,
+    },
     #[error("Platform `{0}` is not installed.")]
     PlatformNotFound(u32),
     #[error("Target is not supported.")]
