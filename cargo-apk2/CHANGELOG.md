@@ -1,5 +1,10 @@
 # 已发布
 
+# 1.4.2 (2026-09-29)
+
+- 修复 [#26](https://github.com/mzdk100/cargo-apk2/issues/26)：`zipalign` 现在把未压缩的 `.so` 按 16 KB 页对齐（`-P 16`），消除在 16 KB 内存页设备上启动时弹出的 "This app isn't 16 KB compatible" 警告，同时满足 Google Play 自 2027-02-01 起的强制要求。`-P` 需要 Android SDK Build-Tools 35.0.0 及以上，更低版本自动回退到原有的 4 字节对齐。
+- 更新依赖项：`clap` 4.6.7、`thiserror` 2.0.21、`toml` 1.1.6；并刷新 `Cargo.lock` 传递依赖（`web-sys` 0.3.106、`zerocopy` 0.8.59、`zlib-rs` 0.6.8 等）。
+
 # 1.4.1 (2026-09-07)
 
 - 修复 [#24](https://github.com/mzdk100/cargo-apk2/issues/24)：`ANDROID_NDK_ROOT` 指向无效的 NDK 目录（如 `<sdk>/ndk` 而非 `<sdk>/ndk/<版本>`）时不再 panic，改为返回可读错误并提示正确的配置方式。

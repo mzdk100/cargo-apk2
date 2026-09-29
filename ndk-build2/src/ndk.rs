@@ -198,6 +198,15 @@ impl Ndk {
         &self.build_tools_version
     }
 
+    /// `zipalign -P`（未压缩 `.so` 的 16 KB 页对齐）自 Android SDK Build-Tools 35.0.0 起可用。
+    pub fn supports_16k_page_align(&self) -> bool {
+        self.build_tools_version
+            .split('.')
+            .next()
+            .and_then(|major| major.parse::<u32>().ok())
+            .is_some_and(|major| major >= 35)
+    }
+
     pub fn build_tag(&self) -> u32 {
         self.build_tag
     }

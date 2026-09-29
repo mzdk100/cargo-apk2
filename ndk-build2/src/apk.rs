@@ -487,9 +487,15 @@ impl<'a> UnalignedApk<'a> {
         }
 
         let mut zipalign = self.config.build_tool(bin!("zipalign"))?;
+        zipalign.arg("-f").arg("-v");
+        // Android 15 起的 16 KB 内存页设备要求 APK 中未压缩的 `.so` 按 16 KB 页对齐，
+        // 否则启动时会提示 "This app isn't 16 KB compatible"；Google Play 自 2027-02-01 起强制要求
+        //（https://developer.android.com/guide/practices/page-sizes）。
+        // `-P` 需要 Build-Tools 35.0.0 及以上，低版本回退到原有的 4 字节对齐。
+        if self.config.ndk.supports_16k_page_align() {
+            zipalign.arg("-P").arg("16");
+        }
         zipalign
-            .arg("-f")
-            .arg("-v")
             .arg("4")
             .arg(self.config.unaligned_apk())
             .arg(self.config.apk());
