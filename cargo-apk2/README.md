@@ -66,6 +66,7 @@ This repository includes various example projects demonstrating different featur
 - `kotlin-examples/` - Examples with Kotlin integration
 - `ndk-examples/` - Examples using Android NDK
 - `scala-examples/` - Examples with Scala integration
+- `slint-examples/` - Examples using the Slint UI toolkit
 
 To run any example, navigate to its directory and execute:
 

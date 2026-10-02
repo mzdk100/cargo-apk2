@@ -61,6 +61,7 @@ crate-type = ["cdylib"]
 - `kotlin-examples/` - Kotlin 语言集成示例
 - `ndk-examples/` - Android NDK 使用示例
 - `scala-examples/` - Scala 语言集成示例
+- `slint-examples/` - 使用 Slint UI 工具包的示例
 
 运行示例的方法如下：
 
