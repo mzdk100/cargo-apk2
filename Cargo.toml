@@ -27,6 +27,7 @@ ndk = "0.9.0"
 ndk-context = "0.1.1"
 quick-xml = "0.41.0"
 serde = "1.0.229"
+slint = "1.18.1"
 thiserror = "2.0.21"
 toml = "1.1.6"
 which = "8.0.6"
@@ -39,6 +40,7 @@ members = [
     "java-examples",
     "kotlin-examples",
     "scala-examples",
+    "slint-examples",
     "ndk-build2",
     "ndk-examples",
     "cargo-apk2",
