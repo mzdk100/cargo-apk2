@@ -1,5 +1,11 @@
 # 已发布
 
+# 1.5.0 (2026-10-18)
+
+- 新增 `banner` 配置项，支持为 Android TV 应用指定启动器横幅（序列化为 `android:banner` 属性，[#28](https://github.com/mzdk100/cargo-apk2/pull/28)）。
+- 新增 `slint-examples` 示例工程，演示使用 Slint UI 工具包（`backend-android-activity-06`）构建 Android 应用（[#27](https://github.com/mzdk100/cargo-apk2/pull/27)）。
+- 更新依赖项：`dirs` 7.0.0、`eframe` 0.37.0、`quick-xml` 0.42.0、`libc` 1.0.0-alpha.5、`toml` 1.1.8；并刷新 `Cargo.lock` 传递依赖（`image` 0.25.10、`wgpu` 30.0.1、`winit` 0.30.13 等）。
+
 # 1.4.2 (2026-09-29)
 
 - 修复 [#26](https://github.com/mzdk100/cargo-apk2/issues/26)：`zipalign` 现在把未压缩的 `.so` 按 16 KB 页对齐（`-P 16`），消除在 16 KB 内存页设备上启动时弹出的 "This app isn't 16 KB compatible" 警告，同时满足 Google Play 自 2027-02-01 起的强制要求。`-P` 需要 Android SDK Build-Tools 35.0.0 及以上，更低版本自动回退到原有的 4 字节对齐。

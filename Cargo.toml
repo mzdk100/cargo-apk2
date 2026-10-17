@@ -1,5 +1,5 @@
 [workspace.package]
-version = "1.4.2"
+version = "1.5.0"
 authors = [
     "SmileSky <mzdk100@foxmail.com>",
     "The Rust Windowing contributors",
@@ -16,20 +16,20 @@ android_logger = "0.15.1"
 anyhow = "1.0.104"
 cargo-subcommand = "0.12.0"
 clap = "4.6.7"
-dirs = "6.0.0"
+dirs = "7.0.0"
 dunce = "1.0.5"
-eframe = "0.35.0"
+eframe = "0.37.0"
 env_logger = "0.11.11"
 jni = "0.22.4"
-libc = "1.0.0-alpha.4"
+libc = "1.0.0-alpha.5"
 log = "0.4.34"
 ndk = "0.9.0"
 ndk-context = "0.1.1"
-quick-xml = "0.41.0"
+quick-xml = "0.42.0"
 serde = "1.0.229"
 slint = "1.18.1"
 thiserror = "2.0.21"
-toml = "1.1.6"
+toml = "1.1.8"
 which = "8.0.6"
 winit = "0.31.0-beta.3"
 
