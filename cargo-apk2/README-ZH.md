@@ -229,6 +229,10 @@ theme = "@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen"
 # 如果未指定，图标将不会被包含在 APK 中。
 icon = "@mipmap/ic_launcher"
 
+# 可选的 Android TV 启动器横幅资源。
+# 参见 https://developer.android.google.cn/guide/topics/manifest/application-element#banner
+banner = "@drawable/tv_banner"
+
 # 参见 https://developer.android.google.cn/guide/topics/manifest/application-element#label
 #
 # 指定面向用户的应用名称。默认为编译后的工件名称（Rust 包名）。

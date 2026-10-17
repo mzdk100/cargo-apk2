@@ -144,6 +144,11 @@ pub struct Application {
         skip_serializing_if = "Option::is_none"
     )]
     pub icon: Option<String>,
+    #[serde(
+        rename(serialize = "@android:banner"),
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub banner: Option<String>,
     #[serde(rename(serialize = "@android:label"))]
     #[serde(default)]
     pub label: String,
