@@ -250,6 +250,10 @@ theme = "@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen"
 # If not specified, an icon will not be included in the APK.
 icon = "@mipmap/ic_launcher"
 
+# Optional Android TV launcher banner resource.
+# See https://developer.android.com/guide/topics/manifest/application-element#banner
+banner = "@drawable/tv_banner"
+
 # See https://developer.android.com/guide/topics/manifest/application-element#label
 #
 # User-readable application name. Defaults to the compiled artifact's name.
